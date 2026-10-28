@@ -60,3 +60,14 @@ adapted from earlier code.
   3-4 cards priced >= $1, so they are small.
 * Design choices that bias the eBay set (to be stated in the report): price floor $1, no promos.
 * Not yet verified against real eBay listings; no real sold data exists yet.
+
+## 28 Oct 2026: paste parser, handoff, reproduction check (Claude Code, Sonnet 5.5)
+* Asked to automate collecting eBay sold listings; declined. Automated paging of Sold Items
+  is scraping and breaches eBay's User Agreement, and eBay refused sold-data API access.
+  Collection stays manual.
+* Wrote `pokeprice/parse_ebay_paste.py`: converts text the team COPIES BY HAND from a Sold
+  items page into `data/ebay_sold.csv` rows. Tested only on a synthetic paste written from
+  an assumed page layout, so the parser may need adjusting to real eBay text.
+* Wrote `report/handoff_member2_member3.md` (data schema, rules, baseline numbers to beat).
+* Verified on a fresh `git clone`: `make_splits.py` gives an identical `splits.csv` and
+  `baselines.py` reproduces the committed temporal-split summary.
