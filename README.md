@@ -59,6 +59,13 @@ per card; item price only (shipping excluded).
 python pokeprice/build_ebay.py --start 2026-09-01 --end 2026-10-15
 ```
 
+To save retyping, paste a copied "Sold items" page into a text file and convert it
+(this does not contact eBay; you do the searching and copying by hand):
+
+```bash
+python pokeprice/parse_ebay_paste.py paste.txt --card-id base1-4   # appends to data/ebay_sold.csv
+```
+
 Filters out graded, lots, fakes, sealed product, non-English, damaged and variant
 listings; matches titles to card ids by card number + name + set; removes
 per-card price outliers; aggregates to a median per card. Rejected and unmatched
