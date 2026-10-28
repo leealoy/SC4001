@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PokePrice Browser</title>
+<!-- Serve with: python pokeprice/dashboard_server.py  then open http://127.0.0.1:8765/ -->
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --text: #1b1f24; --muted: #667085; --border: #e3e6ea;
+    --accent: #3b5bdb; --ok: #2b8a3e; --warn: #e67700; --err: #c92a2a; --chip: #eef1f5;
+    --sold: #2b8a3e; --ask: #3b5bdb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #111318; --panel: #1a1d24; --text: #e6e8eb; --muted: #98a2b3; --border: #2a2f39;
+      --accent: #748ffc; --ok: #51cf66; --warn: #ffa94d; --err: #ff6b6b; --chip: #232833;
+      --sold: #51cf66; --ask: #748ffc;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--panel); border-bottom: 1px solid var(--border);
+           padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: center; }
+  h1 { font-size: 17px; margin: 0; margin-right: auto; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px;
+          background: var(--chip); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); } .dot.err { background: var(--err); }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px; align-items: center; }
+  input, select, button { font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--border);
+                          border-radius: 8px; padding: 7px 10px; }
+  input[type=search] { flex: 1 1 220px; min-width: 0; }
+  label.check { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; }
+  button { cursor: pointer; } button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .5; cursor: default; }
+  main { display: grid; grid-template-columns: 1fr 320px; gap: 16px; padding: 0 16px 24px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  .summary { color: var(--muted); margin: 0 0 10px; font-size: 13px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 8px; cursor: pointer;
+          display: flex; flex-direction: column; gap: 4px; transition: transform .1s; }
+  .card:hover { transform: translateY(-2px); border-color: var(--accent); }
+  .card img { width: 100%; aspect-ratio: 245/342; object-fit: contain; border-radius: 6px; background: var(--chip); }
+  .card .name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .meta { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .price { font-variant-numeric: tabular-nums; font-size: 12px; line-height: 1.35; }
+  .price b { font-size: 13px; }
+  .price .lbl { display: inline-block; min-width: 38px; font-weight: 600; }
+  .price .sold .lbl { color: var(--sold); } .price .ask .lbl { color: var(--ask); }
+  .muted { color: var(--muted); } .error { color: var(--err); }
+  .pager { display: flex; gap: 8px; align-items: center; justify-content: center; margin-top: 16px; }
+  aside { display: flex; flex-direction: column; gap: 16px; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+  .panel h2 { font-size: 13px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
+  .stat span { color: var(--muted); font-size: 12px; }
+  .note { font-size: 12px; color: var(--muted); margin: 10px 0 0; }
+  #log { font: 12px/1.4 ui-monospace, Menlo, monospace; max-height: 260px; overflow: auto; margin: 0; padding: 0; list-style: none; }
+  #log li { padding: 4px 0; border-bottom: 1px dashed var(--border); word-break: break-all; }
+  .c2 { color: var(--ok); } .c5 { color: var(--err); }
+  .banner { margin: 12px 16px 0; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--warn);
+            background: color-mix(in srgb, var(--warn) 10%, var(--panel)); display: none; }
+  .banner.err { border-color: var(--err); background: color-mix(in srgb, var(--err) 10%, var(--panel)); }
+  .banner code { font-size: 12px; }
+  .empty { padding: 40px; text-align: center; color: var(--muted); }
+  dialog { border: 1px solid var(--border); border-radius: 12px; background: var(--panel); color: var(--text);
+           max-width: 980px; width: calc(100% - 32px); padding: 0; }
+  dialog::backdrop { background: rgba(0,0,0,.5); }
+  .detail { display: grid; grid-template-columns: 220px 1fr; gap: 16px; padding: 16px; }
+  @media (max-width: 680px) { .detail { grid-template-columns: 1fr; } }
+  .detail img { width: 100%; border-radius: 10px; }
+  .detail h3 { margin: 0 0 4px; }
+  .detail h4 { margin: 16px 0 6px; }
+  .detail h4.sold { color: var(--sold); } .detail h4.ask { color: var(--ask); }
+  .tablewrap { max-height: 260px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 12px; }
+  th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { position: sticky; top: 0; background: var(--panel); }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  tr.rej td { color: var(--muted); }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 13px; margin: 8px 0; }
+  .kv dt { color: var(--muted); } .kv dd { margin: 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+  a { color: var(--accent); }
+  .pad { padding: 16px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>PokePrice · eBay prices</h1>
+  <span class="pill" id="soldStatus"><span class="dot"></span><span>Sold data: loading…</span></span>
+  <span class="pill" id="askStatus"><span class="dot"></span><span>Active listings: checking…</span></span>
+  <button id="review">Review rejected</button>
+  <button id="reload">Reload data</button>
+</header>
+
+<div class="banner" id="soldBanner"></div>
+<div class="banner err" id="askBanner"></div>
+
+<div class="controls">
+  <input type="search" id="q" placeholder="Card name or card id, e.g. charizard, base1-4">
+  <select id="set"><option value="">All sets</option></select>
+  <select id="rarity">
+    <option value="">Any rarity</option>
+    <option>Common</option><option>Uncommon</option><option>Rare</option><option>Rare Holo</option>
+    <option>Double Rare</option><option>Ultra Rare</option><option>Illustration Rare</option>
+    <option>Special Illustration Rare</option><option>Hyper Rare</option><option>Rare Secret</option>
+  </select>
+  <select id="sort">
+    <option value="newest">Newest sets</option>
+    <option value="oldest">Oldest sets</option>
+    <option value="name">Name A→Z</option>
+    <option value="ebay_price">Sold median high→low</option>
+    <option value="ebay_sales">Most sold listings</option>
+  </select>
+  <label class="check"><input type="checkbox" id="onlyEbay"> Only cards with sold data</label>
+  <label class="check"><input type="checkbox" id="tileAsk" checked> Active prices on tiles</label>
+  <button class="primary" id="go">Search</button>
+</div>
+
+<main>
+  <section>
+    <p class="summary" id="summary">Loading…</p>
+    <div class="grid" id="grid"></div>
+    <div class="pager">
+      <button id="prev" disabled>← Prev</button>
+      <span id="pageinfo"></span>
+      <button id="next" disabled>Next →</button>
+    </div>
+  </section>
+  <aside>
+    <div class="panel">
+      <h2>Hand-collected sold data</h2>
+      <div class="stats">
+        <div class="stat"><b id="sCards">–</b><span>cards with ≥min sales</span></div>
+        <div class="stat"><b id="sClean">–</b><span>clean sales</span></div>
+        <div class="stat"><b id="sRej">–</b><span>rejected listings</span></div>
+        <div class="stat"><b id="sUnm">–</b><span>unmatched listings</span></div>
+      </div>
+      <p class="note" id="sRaw"></p>
+      <p class="note">From <code>build_ebay.py</code> outputs in <code>data/</code>. Item price only (no shipping), USD.
+        Re-run <code>build_ebay.py</code>, then press “Reload data”.</p>
+    </div>
+    <div class="panel">
+      <h2>Active listings (eBay Browse API)</h2>
+      <div class="stats">
+        <div class="stat"><b id="aOk">0</b><span>calls OK</span></div>
+        <div class="stat"><b id="aFail">0</b><span>calls failed</span></div>
+      </div>
+      <p class="note">Asking prices of current Buy It Now listings (auctions show the current bid), same title
+        filters as the sold data. Not sale prices — don't mix them with the sold set.</p>
+    </div>
+    <div class="panel">
+      <h2>Request log</h2>
+      <ul id="log"></ul>
+    </div>
+  </aside>
+</main>
+
+<dialog id="dlg"><div id="dlgBody"></div></dialog>
+
+<script>
+const ASK_CONCURRENCY = 3;
+const $ = id => document.getElementById(id);
+const stats = { askOk: 0, askFail: 0 };
+const askCache = new Map();   // card id -> promise of /api/ebay/active
+let page = 1, total = 0, renderToken = 0, browseReady = false, haveSold = false;
+
+const usd = v => v == null ? "–" : "$" + Number(v).toFixed(2);
+const day = s => s ? new Date(s).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "–";
+const esc = s => String(s ?? "—").replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+const reason = r => r ? esc(String(r).replace(/_/g, " ")) : "✓ kept";
+
+function log(cls, text) {
+  const li = document.createElement("li");
+  li.className = cls;
+  li.textContent = `${new Date().toLocaleTimeString()}  ${text}`;
+  $("log").prepend(li);
+  while ($("log").children.length > 100) $("log").lastChild.remove();
+}
+function setPill(id, kind, text) {
+  $(id).innerHTML = `<span class="dot ${kind}"></span><span></span>`;
+  $(id).lastChild.textContent = text;
+}
+function banner(id, html) { $(id).style.display = html ? "block" : "none"; $(id).innerHTML = html || ""; }
+
+async function api(path) {
+  const t0 = performance.now();
+  const r = await fetch(path);
+  const body = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
+  const ms = Math.round(performance.now() - t0);
+  log(r.ok ? "c2" : "c5", `${r.status} ${ms}ms ${path}${r.ok ? "" : " — " + body.error}`);
+  if (!r.ok) throw new Error(body.error || `HTTP ${r.status}`);
+  return body;
+}
+
+// ---- status -----------------------------------------------------------------
+async function loadStatus() {
+  let s;
+  try { s = await api("/api/status"); }
+  catch (e) {
+    setPill("soldStatus", "err", "Server not reachable");
+    banner("soldBanner", "Can't reach the local server. Start it with <code>python pokeprice/dashboard_server.py</code> and open http://127.0.0.1:8765/");
+    return;
+  }
+  const n = v => v == null ? "–" : v.toLocaleString();
+  $("sCards").textContent = n(s.ebay_cards); $("sClean").textContent = n(s.ebay_clean);
+  $("sRej").textContent = n(s.ebay_rejected); $("sUnm").textContent = n(s.ebay_unmatched);
+  $("sRaw").textContent = s.ebay_raw == null ? "data/ebay_sold.csv: not found" : `data/ebay_sold.csv: ${n(s.ebay_raw)} raw rows`;
+  haveSold = !!s.ebay_cards;
+  if (s.cards == null) {
+    setPill("soldStatus", "err", "cards.csv missing");
+    banner("soldBanner", "data/cards.csv not found — run <code>python pokeprice/fetch_cards.py</code> first.");
+  } else if (s.ebay_cards == null) {
+    setPill("soldStatus", "warn", "No sold data yet");
+    banner("soldBanner", `No hand-collected sold data yet. Copy sold listings into <code>data/ebay_sold.csv</code>
+      (columns as in <code>data/ebay_sold_TEMPLATE.csv</code>), then run
+      <code>python pokeprice/build_ebay.py --start 2026-09-01 --end 2026-10-15</code> and press “Reload data”.`);
+  } else {
+    setPill("soldStatus", "ok", `Sold data: ${n(s.ebay_cards)} cards · ${n(s.ebay_clean)} sales`);
+    banner("soldBanner", s.ebay_cards === 0 ? "ebay_cards.csv is empty: no card reached the minimum number of clean sales. Check “Review rejected”." : "");
+  }
+  const b = s.browse;
+  browseReady = b.token_ok;
+  if (b.token_ok) { setPill("askStatus", "ok", `Active listings: connected (${b.env})`); banner("askBanner", ""); }
+  else {
+    setPill("askStatus", "err", b.configured ? "Active listings: auth failed" : "Active listings: no keys");
+    banner("askBanner", `Active listings unavailable: ${esc(b.error)}`);
+  }
+}
+
+// ---- active listings (Browse API), concurrency-limited ------------------------
+const queue = []; let running = 0;
+function enqueue(fn) { return new Promise((resolve, reject) => { queue.push({ fn, resolve, reject }); pump(); }); }
+function pump() {
+  while (running < ASK_CONCURRENCY && queue.length) {
+    const { fn, resolve, reject } = queue.shift();
+    running++;
+    fn().then(resolve, reject).finally(() => { running--; pump(); });
+  }
+}
+function active(id) {
+  if (!askCache.has(id)) {
+    const p = enqueue(() => api(`/api/ebay/active?id=${encodeURIComponent(id)}`))
+      .then(r => { stats.askOk++; $("aOk").textContent = stats.askOk; return r; },
+            e => { if (e.message !== "cancelled") { stats.askFail++; $("aFail").textContent = stats.askFail; } throw e; });
+    p.catch(() => askCache.delete(id));
+    askCache.set(id, p);
+  }
+  return askCache.get(id);
+}
+
+// ---- grid ---------------------------------------------------------------------
+async function loadSets() {
+  try {
+    for (const s of await api("/api/sets")) {
+      const o = document.createElement("option");
+      o.value = s.set_id; o.textContent = `${s.set_name} (${String(s.release_date).slice(0, 4)})`;
+      $("set").append(o);
+    }
+  } catch { /* logged */ }
+}
+
+async function loadCards() {
+  queue.splice(0).forEach(job => job.reject(new Error("cancelled")));
+  const token = ++renderToken;
+  $("summary").textContent = "Loading cards…";
+  $("grid").innerHTML = "";
+  const params = new URLSearchParams({ q: $("q").value.trim(), set: $("set").value, rarity: $("rarity").value,
+                                       sort: $("sort").value, only_ebay: $("onlyEbay").checked ? "1" : "", page });
+  let res;
+  try { res = await api(`/api/cards?${params}`); }
+  catch (e) { $("summary").textContent = ""; $("grid").innerHTML = `<div class="empty error">${esc(e.message)}</div>`; return; }
+  if (token !== renderToken) return;
+  total = res.total;
+  const pages = Math.max(1, Math.ceil(total / res.page_size));
+  $("summary").textContent = `${total.toLocaleString()} cards match · showing ${res.cards.length}`;
+  $("pageinfo").textContent = `Page ${page} / ${pages}`;
+  $("prev").disabled = page <= 1; $("next").disabled = page >= pages;
+  if (!res.cards.length) {
+    $("grid").innerHTML = `<div class="empty">No cards match${$("onlyEbay").checked ? " (only cards with sold data are shown)" : ""}.</div>`;
+    return;
+  }
+  const frag = document.createDocumentFragment();
+  for (const c of res.cards) {
+    const el = document.createElement("div");
+    el.className = "card";
+    el.innerHTML = `<img loading="lazy" alt=""><div class="name"></div><div class="meta"></div>
+      <div class="price"><div class="sold"></div><div class="ask"></div></div>`;
+    el.querySelector("img").src = c.image_url || "";
+    el.querySelector("img").alt = c.name;
+    el.querySelector(".name").textContent = c.name;
+    el.querySelector(".meta").textContent = `${c.set_name} · #${c.number} · ${c.rarity ?? "—"}`;
+    el.querySelector(".sold").innerHTML = c.n_sales != null
+      ? `<span class="lbl">Sold</span><b>${usd(c.ebay_median_usd)}</b> <span class="muted">median · n=${c.n_sales}</span><br>
+         <span class="lbl"></span><span class="muted">last ${usd(c.last_sold_usd)} · ${esc(day(c.last_sold_date))}</span>`
+      : `<span class="lbl">Sold</span><span class="muted">${haveSold ? "not collected" : "no data yet"}</span>`;
+    const askEl = el.querySelector(".ask");
+    if (!browseReady) askEl.innerHTML = `<span class="lbl">Ask</span><span class="muted">not connected</span>`;
+    else if (!$("tileAsk").checked) askEl.innerHTML = `<span class="lbl">Ask</span><span class="muted">open card</span>`;
+    else {
+      askEl.innerHTML = `<span class="lbl">Ask</span><span class="muted">loading…</span>`;
+      active(c.card_id).then(a => {
+        if (token !== renderToken) return;
+        askEl.innerHTML = a.lowest_ask != null
+          ? `<span class="lbl">Ask</span><b>${usd(a.lowest_ask)}</b> <span class="muted">lowest · ${a.n_buy_it_now} BIN</span>`
+          : `<span class="lbl">Ask</span><span class="muted">no clean listing</span>`;
+      }, e => { if (token === renderToken && e.message !== "cancelled") askEl.innerHTML = `<span class="lbl">Ask</span><span class="error">error</span>`; });
+    }
+    el.onclick = () => openDetail(c);
+    frag.append(el);
+  }
+  $("grid").append(frag);
+}
+
+// ---- card detail ------------------------------------------------------------------
+function soldTable(rows, cols) {
+  if (!rows.length) return "";
+  const head = cols.map(([k, label, num]) => `<th class="${num ? "num" : ""}">${label}</th>`).join("");
+  const body = rows.map(r => `<tr class="${r.reject_reason || r.unmatched_reason ? "rej" : ""}">${cols.map(([k, , num, fmt]) =>
+    `<td class="${num ? "num" : ""}">${fmt ? fmt(r[k], r) : esc(r[k])}</td>`).join("")}</tr>`).join("");
+  return `<div class="tablewrap"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+const SALE_COLS = [["sold_date", "Sold", true, v => esc(day(v))], ["sold_price_usd", "Price", true, usd],
+                   ["title", "Listing title"], ["item_id", "Item id", true]];
+
+function openDetail(c) {
+  $("dlgBody").innerHTML = `
+    <div class="detail">
+      <img src="${esc(c.image_url_large || c.image_url)}" alt="${esc(c.name)}">
+      <div>
+        <h3>${esc(c.name)}</h3>
+        <div class="muted">${esc(c.set_name)} (${esc(c.series)}) · #${esc(c.number)}/${esc(c.printed_total == null ? "—" : Math.round(c.printed_total))}
+          · ${esc(c.rarity)} · released ${esc(String(c.release_date).slice(0, 10))} · <code>${esc(c.card_id)}</code></div>
+        <h4 class="sold">eBay sold — hand-collected</h4>
+        <div id="soldDetail" class="muted">Loading…</div>
+        <h4 class="ask">eBay active listings — asking prices</h4>
+        <div id="askDetail" class="muted">${browseReady ? "Loading…" : "Browse API not connected."}</div>
+        <p><button onclick="document.getElementById('dlg').close()">Close</button></p>
+      </div>
+    </div>`;
+  $("dlg").showModal();
+
+  api(`/api/ebay/card?id=${encodeURIComponent(c.card_id)}`).then(s => {
+    const audit = [
+      ["Rejected by a filter (target = this card)", s.rejected, [["sold_date", "Sold", true, v => esc(day(v))], ["sold_price_usd", "Price", true, usd], ["title", "Listing title"], ["reject_reason", "Reason", false, reason]]],
+      ["Unmatched (target = this card)", s.unmatched, [["sold_date", "Sold", true, v => esc(day(v))], ["sold_price_usd", "Price", true, usd], ["title", "Listing title"], ["unmatched_reason", "Reason", false, reason]]],
+      ["Matched to a DIFFERENT card (target = this card)", s.mislabelled, [["sold_date", "Sold", true, v => esc(day(v))], ["sold_price_usd", "Price", true, usd], ["title", "Listing title"], ["card_id", "Matched to"]]],
+    ].filter(([, rows]) => rows.length);
+    $("soldDetail").className = "";
+    $("soldDetail").innerHTML = (c.n_sales != null
+      ? `<dl class="kv"><dt>Median</dt><dd><b>${usd(c.ebay_median_usd)}</b> from ${c.n_sales} sales (range ${usd(c.ebay_min)}–${usd(c.ebay_max)})</dd>
+           <dt>Last sold</dt><dd>${usd(c.last_sold_usd)} on ${esc(day(c.last_sold_date))}</dd></dl>`
+      : `<p class="muted">${s.clean.length ? "Has clean sales but not enough to pass --min-sales." : "No clean sales for this card."}</p>`)
+      + soldTable(s.clean, SALE_COLS)
+      + audit.map(([title, rows, cols]) => `<p style="margin:10px 0 4px"><b>${title}: ${rows.length}</b></p>${soldTable(rows, cols)}`).join("");
+  }, e => { $("soldDetail").className = "error"; $("soldDetail").textContent = e.message; });
+
+  if (!browseReady) return;
+  active(c.card_id).then(a => {
+    $("askDetail").className = "";
+    const rows = a.items.map(i => `<tr class="${i.reject ? "rej" : ""}">
+        <td class="num">${usd(i.price)}</td><td class="num">${i.shipping == null ? "–" : i.shipping === 0 ? "free" : usd(i.shipping)}</td>
+        <td>${i.kind === "auction" ? `auction${i.bids != null ? ` · ${i.bids} bids` : ""}` : "Buy It Now"}</td>
+        <td>${i.url ? `<a href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.title)}</a>` : esc(i.title)}</td>
+        <td>${reason(i.reject)}</td></tr>`).join("");
+    $("askDetail").innerHTML = `
+      <dl class="kv">
+        <dt>Lowest ask</dt><dd><b>${usd(a.lowest_ask)}</b> (Buy It Now, kept listings)</dd>
+        <dt>Median ask</dt><dd>${usd(a.median_ask)} over ${a.n_buy_it_now} Buy It Now listings</dd>
+        <dt>Returned</dt><dd>${a.n_returned} listings, ${a.n_kept} kept after filters</dd>
+        <dt>Query</dt><dd>${esc(a.query)}${a.cached ? " (cached)" : ""}</dd>
+      </dl>
+      ${a.items.length ? `<div class="tablewrap"><table><thead><tr><th class="num">Price</th><th class="num">Ship</th><th>Type</th><th>Listing title</th><th>Filter</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>` : `<p class="muted">No active listings found.</p>`}`;
+  }, e => { $("askDetail").className = "error"; $("askDetail").textContent = `Browse API error: ${e.message}`; });
+}
+
+// ---- review queue -------------------------------------------------------------------
+async function openReview() {
+  $("dlgBody").innerHTML = `<div class="pad">Loading…</div>`;
+  $("dlg").showModal();
+  let r;
+  try { r = await api("/api/ebay/review"); }
+  catch (e) { $("dlgBody").innerHTML = `<div class="pad error">${esc(e.message)}</div>`; return; }
+  const section = (title, part, reasonKey) => {
+    if (part == null) return `<h4>${title}</h4><p class="muted">File not found (run build_ebay.py).</p>`;
+    const chips = Object.entries(part.counts).map(([k, v]) => `<span class="pill">${reason(k)}: ${v}</span>`).join("");
+    return `<h4>${title}: ${part.rows.length}</h4><div class="chips">${chips}</div>` + soldTable(part.rows, [
+      ["sold_date", "Sold", true, v => esc(day(v))], ["sold_price_usd", "Price", true, usd], ["title", "Listing title"],
+      [reasonKey, "Reason", false, reason], ["target_card_id", "Target card"]]);
+  };
+  $("dlgBody").innerHTML = `<div class="pad">
+    <h3 style="margin-top:0">Review queue (build_ebay.py says: review these by hand)</h3>
+    ${section("Rejected by a filter", r.rejected, "reject_reason")}
+    ${section("Passed filters, no unique card match", r.unmatched, "unmatched_reason")}
+    <p><button onclick="document.getElementById('dlg').close()">Close</button></p></div>`;
+}
+$("dlg").addEventListener("click", e => { if (e.target === $("dlg")) $("dlg").close(); });
+
+// ---- wiring ---------------------------------------------------------------------------
+const reset = () => { page = 1; loadCards(); };
+$("go").onclick = reset;
+$("q").addEventListener("keydown", e => { if (e.key === "Enter") reset(); });
+for (const id of ["set", "rarity", "sort", "onlyEbay", "tileAsk"]) $(id).addEventListener("change", reset);
+$("prev").onclick = () => { page--; loadCards(); };
+$("next").onclick = () => { page++; loadCards(); };
+$("review").onclick = openReview;
+$("reload").onclick = async () => { $("reload").disabled = true; try { await loadStatus(); await loadCards(); } finally { $("reload").disabled = false; } };
+
+(async () => {
+  await Promise.all([loadStatus(), loadSets()]);
+  if (haveSold) $("onlyEbay").checked = true;
+  loadCards();
+})();
+</script>
+</body>
+</html>

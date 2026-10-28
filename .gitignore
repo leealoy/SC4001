@@ -1,0 +1,8 @@
+# large / regenerable: rebuild with pokeprice/fetch_cards.py
+data/raw/
+data/images/
+__pycache__/
+.env
+*.pyc
+.DS_Store
+data/ebay_api_cache/

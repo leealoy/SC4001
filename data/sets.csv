@@ -1,0 +1,177 @@
+set_id,set_name,series,release_date,printed_total,total
+base1,Base,Base,1999-01-09,102.0,102
+base2,Jungle,Base,1999-06-16,64.0,64
+basep,Wizards Black Star Promos,Base,1999-07-01,53.0,53
+base3,Fossil,Base,1999-10-10,62.0,62
+base4,Base Set 2,Base,2000-02-24,130.0,130
+base5,Team Rocket,Base,2000-04-24,82.0,83
+gym1,Gym Heroes,Gym,2000-08-14,132.0,132
+gym2,Gym Challenge,Gym,2000-10-16,132.0,132
+neo1,Neo Genesis,Neo,2000-12-16,111.0,111
+neo2,Neo Discovery,Neo,2001-06-01,75.0,75
+si1,Southern Islands,Other,2001-07-31,18.0,18
+neo3,Neo Revelation,Neo,2001-09-21,64.0,66
+neo4,Neo Destiny,Neo,2002-02-28,105.0,113
+base6,Legendary Collection,Other,2002-05-24,110.0,110
+ecard1,Expedition Base Set,E-Card,2002-09-15,165.0,165
+bp,Best of Game,Other,2002-12-01,9.0,9
+ecard2,Aquapolis,E-Card,2003-01-15,147.0,182
+ecard3,Skyridge,E-Card,2003-05-12,144.0,182
+ex1,Ruby & Sapphire,EX,2003-07-01,109.0,109
+ex2,Sandstorm,EX,2003-09-18,100.0,100
+np,Nintendo Black Star Promos,NP,2003-10-01,40.0,40
+ex3,Dragon,EX,2003-11-24,97.0,100
+ex4,Team Magma vs Team Aqua,EX,2004-03-01,95.0,97
+ex5,Hidden Legends,EX,2004-06-01,101.0,102
+tk1b,EX Trainer Kit Latios,EX,2004-06-01,10.0,10
+tk1a,EX Trainer Kit Latias,EX,2004-06-01,10.0,10
+ex6,FireRed & LeafGreen,EX,2004-09-01,112.0,116
+pop1,POP Series 1,POP,2004-09-01,17.0,17
+ex7,Team Rocket Returns,EX,2004-11-01,109.0,111
+ex8,Deoxys,EX,2005-02-01,107.0,108
+ex9,Emerald,EX,2005-05-01,106.0,107
+ex10,Unseen Forces,EX,2005-08-01,115.0,145
+pop2,POP Series 2,POP,2005-08-01,17.0,17
+ex11,Delta Species,EX,2005-10-31,113.0,114
+ex12,Legend Maker,EX,2006-02-01,92.0,93
+tk2a,EX Trainer Kit 2 Plusle,EX,2006-03-01,12.0,12
+tk2b,EX Trainer Kit 2 Minun,EX,2006-03-01,12.0,12
+pop3,POP Series 3,POP,2006-04-01,17.0,17
+ex13,Holon Phantoms,EX,2006-05-01,110.0,111
+pop4,POP Series 4,POP,2006-08-01,17.0,17
+ex14,Crystal Guardians,EX,2006-08-01,100.0,100
+ex15,Dragon Frontiers,EX,2006-11-01,101.0,101
+ex16,Power Keepers,EX,2007-02-02,108.0,108
+pop5,POP Series 5,POP,2007-03-01,17.0,17
+dp1,Diamond & Pearl,Diamond & Pearl,2007-05-01,130.0,130
+dpp,DP Black Star Promos,Diamond & Pearl,2007-05-01,56.0,56
+dp2,Mysterious Treasures,Diamond & Pearl,2007-08-01,123.0,124
+pop6,POP Series 6,POP,2007-09-01,17.0,17
+dp3,Secret Wonders,Diamond & Pearl,2007-11-01,132.0,132
+dp4,Great Encounters,Diamond & Pearl,2008-02-01,106.0,106
+pop7,POP Series 7,POP,2008-03-01,17.0,17
+dp5,Majestic Dawn,Diamond & Pearl,2008-05-01,100.0,100
+dp6,Legends Awakened,Diamond & Pearl,2008-08-01,146.0,146
+pop8,POP Series 8,POP,2008-09-01,17.0,17
+dp7,Stormfront,Diamond & Pearl,2008-11-01,100.0,106
+pl1,Platinum,Platinum,2009-02-11,127.0,133
+pop9,POP Series 9,POP,2009-03-01,17.0,17
+pl2,Rising Rivals,Platinum,2009-05-16,111.0,120
+pl3,Supreme Victors,Platinum,2009-08-19,147.0,153
+pl4,Arceus,Platinum,2009-11-04,99.0,111
+ru1,Pokémon Rumble,Other,2009-12-02,16.0,16
+hgss1,HeartGold & SoulSilver,HeartGold & SoulSilver,2010-02-10,123.0,124
+hsp,HGSS Black Star Promos,HeartGold & SoulSilver,2010-02-10,25.0,25
+hgss2,HS—Unleashed,HeartGold & SoulSilver,2010-05-12,95.0,96
+hgss3,HS—Undaunted,HeartGold & SoulSilver,2010-08-18,90.0,91
+hgss4,HS—Triumphant,HeartGold & SoulSilver,2010-11-03,102.0,103
+col1,Call of Legends,HeartGold & SoulSilver,2011-02-09,95.0,106
+bwp,BW Black Star Promos,Black & White,2011-03-01,101.0,101
+bw1,Black & White,Black & White,2011-04-25,114.0,115
+mcd11,McDonald's Collection 2011,Other,2011-06-17,12.0,12
+bw2,Emerging Powers,Black & White,2011-08-31,98.0,98
+bw3,Noble Victories,Black & White,2011-11-16,101.0,102
+bw4,Next Destinies,Black & White,2012-02-08,99.0,103
+bw5,Dark Explorers,Black & White,2012-05-09,108.0,111
+mcd12,McDonald's Collection 2012,Other,2012-06-15,12.0,12
+bw6,Dragons Exalted,Black & White,2012-08-15,124.0,128
+dv1,Dragon Vault,Black & White,2012-10-05,20.0,21
+bw7,Boundaries Crossed,Black & White,2012-11-07,149.0,153
+bw8,Plasma Storm,Black & White,2013-02-06,135.0,138
+bw9,Plasma Freeze,Black & White,2013-05-08,116.0,122
+bw10,Plasma Blast,Black & White,2013-08-14,101.0,105
+xyp,XY Black Star Promos,XY,2013-10-12,211.0,216
+bw11,Legendary Treasures,Black & White,2013-11-06,113.0,140
+xy0,Kalos Starter Set,XY,2013-11-08,39.0,39
+xy1,XY,XY,2014-02-05,146.0,146
+xy2,Flashfire,XY,2014-05-07,106.0,110
+mcd14,McDonald's Collection 2014,Other,2014-05-23,12.0,12
+xy3,Furious Fists,XY,2014-08-13,111.0,114
+xy4,Phantom Forces,XY,2014-11-05,119.0,124
+xy5,Primal Clash,XY,2015-02-04,160.0,164
+dc1,Double Crisis,XY,2015-03-25,34.0,34
+xy6,Roaring Skies,XY,2015-05-06,108.0,112
+xy7,Ancient Origins,XY,2015-08-12,98.0,100
+xy8,BREAKthrough,XY,2015-11-04,162.0,165
+mcd15,McDonald's Collection 2015,Other,2015-11-27,12.0,12
+xy9,BREAKpoint,XY,2016-02-03,122.0,126
+g1,Generations,XY,2016-02-22,83.0,117
+xy10,Fates Collide,XY,2016-05-02,124.0,129
+xy11,Steam Siege,XY,2016-08-03,114.0,116
+mcd16,McDonald's Collection 2016,Other,2016-08-19,12.0,12
+xy12,Evolutions,XY,2016-11-02,108.0,113
+sm1,Sun & Moon,Sun & Moon,2017-02-03,149.0,173
+smp,SM Black Star Promos,Sun & Moon,2017-02-03,248.0,250
+sm2,Guardians Rising,Sun & Moon,2017-05-05,145.0,180
+sm3,Burning Shadows,Sun & Moon,2017-08-05,147.0,177
+sm35,Shining Legends,Sun & Moon,2017-10-06,73.0,81
+sm4,Crimson Invasion,Sun & Moon,2017-11-03,111.0,126
+mcd17,McDonald's Collection 2017,Other,2017-11-07,12.0,12
+sm5,Ultra Prism,Sun & Moon,2018-02-02,156.0,178
+sm6,Forbidden Light,Sun & Moon,2018-05-04,131.0,150
+sm7,Celestial Storm,Sun & Moon,2018-08-03,168.0,187
+sm75,Dragon Majesty,Sun & Moon,2018-09-07,70.0,80
+mcd18,McDonald's Collection 2018,Other,2018-10-16,12.0,12
+sm8,Lost Thunder,Sun & Moon,2018-11-02,214.0,240
+sm9,Team Up,Sun & Moon,2019-02-01,181.0,198
+det1,Detective Pikachu,Sun & Moon,2019-04-05,18.0,18
+sm10,Unbroken Bonds,Sun & Moon,2019-05-03,214.0,234
+sm11,Unified Minds,Sun & Moon,2019-08-02,236.0,260
+sm115,Hidden Fates,Sun & Moon,2019-08-23,68.0,69
+sma,Hidden Fates Shiny Vault,Sun & Moon,2019-08-23,94.0,94
+mcd19,McDonald's Collection 2019,Other,2019-10-15,12.0,12
+sm12,Cosmic Eclipse,Sun & Moon,2019-11-01,236.0,272
+swshp,SWSH Black Star Promos,Sword & Shield,2019-11-15,307.0,304
+swsh1,Sword & Shield,Sword & Shield,2020-02-07,202.0,216
+swsh2,Rebel Clash,Sword & Shield,2020-05-01,192.0,209
+swsh3,Darkness Ablaze,Sword & Shield,2020-08-14,189.0,201
+fut20,Pokémon Futsal Collection,Other,2020-09-11,5.0,5
+swsh35,Champion's Path,Sword & Shield,2020-09-25,73.0,80
+swsh4,Vivid Voltage,Sword & Shield,2020-11-13,185.0,203
+mcd21,McDonald's Collection 2021,Other,2021-02-09,25.0,25
+swsh45sv,Shining Fates Shiny Vault,Sword & Shield,2021-02-19,122.0,122
+swsh45,Shining Fates,Sword & Shield,2021-02-19,72.0,73
+swsh5,Battle Styles,Sword & Shield,2021-03-19,163.0,183
+swsh6,Chilling Reign,Sword & Shield,2021-06-18,198.0,233
+swsh7,Evolving Skies,Sword & Shield,2021-08-27,203.0,237
+cel25c,Celebrations: Classic Collection,Sword & Shield,2021-10-08,25.0,25
+cel25,Celebrations,Sword & Shield,2021-10-08,25.0,25
+swsh8,Fusion Strike,Sword & Shield,2021-11-12,264.0,284
+swsh9,Brilliant Stars,Sword & Shield,2022-02-25,172.0,186
+swsh9tg,Brilliant Stars Trainer Gallery,Sword & Shield,2022-02-25,30.0,30
+swsh10,Astral Radiance,Sword & Shield,2022-05-27,189.0,216
+swsh10tg,Astral Radiance Trainer Gallery,Sword & Shield,2022-05-27,30.0,30
+pgo,Pokémon GO,Sword & Shield,2022-07-01,78.0,88
+mcd22,McDonald's Collection 2022,Other,2022-08-03,15.0,15
+swsh11,Lost Origin,Sword & Shield,2022-09-09,196.0,217
+swsh11tg,Lost Origin Trainer Gallery,Sword & Shield,2022-09-09,30.0,30
+swsh12,Silver Tempest,Sword & Shield,2022-11-11,195.0,215
+swsh12tg,Silver Tempest Trainer Gallery,Sword & Shield,2022-11-11,30.0,30
+svp,Scarlet & Violet Black Star Promos,Scarlet & Violet,2023-01-01,215.0,196
+swsh12pt5,Crown Zenith,Sword & Shield,2023-01-20,159.0,160
+swsh12pt5gg,Crown Zenith Galarian Gallery,Sword & Shield,2023-01-20,70.0,70
+sv1,Scarlet & Violet,Scarlet & Violet,2023-03-31,198.0,258
+sve,Scarlet & Violet Energies,Scarlet & Violet,2023-03-31,8.0,8
+sv2,Paldea Evolved,Scarlet & Violet,2023-06-09,193.0,279
+sv3,Obsidian Flames,Scarlet & Violet,2023-08-11,197.0,230
+sv3pt5,151,Scarlet & Violet,2023-09-22,165.0,207
+sv4,Paradox Rift,Scarlet & Violet,2023-11-03,182.0,266
+sv4pt5,Paldean Fates,Scarlet & Violet,2024-01-26,91.0,245
+sv5,Temporal Forces,Scarlet & Violet,2024-03-22,162.0,218
+sv6,Twilight Masquerade,Scarlet & Violet,2024-05-24,167.0,226
+sv6pt5,Shrouded Fable,Scarlet & Violet,2024-08-02,64.0,99
+sv7,Stellar Crown,Scarlet & Violet,2024-09-13,142.0,175
+sv8,Surging Sparks,Scarlet & Violet,2024-11-08,191.0,252
+sv8pt5,Prismatic Evolutions,Scarlet & Violet,2025-01-17,131.0,180
+sv9,Journey Together,Scarlet & Violet,2025-03-28,159.0,190
+sv10,Destined Rivals,Scarlet & Violet,2025-05-30,182.0,244
+rsv10pt5,White Flare,Scarlet & Violet,2025-07-18,86.0,173
+zsv10pt5,Black Bolt,Scarlet & Violet,2025-07-18,86.0,172
+me1,Mega Evolution,Mega Evolution,2025-09-26,132.0,188
+me2,Phantasmal Flames,Mega Evolution,2025-11-14,94.0,130
+me2pt5,Ascended Heroes,Mega Evolution,2026-01-30,217.0,295
+me3,Perfect Order,Mega Evolution,2026-03-27,88.0,124
+me4,Chaos Rising,Mega Evolution,2026-05-22,86.0,122
+me5,Pitch Black,Mega Evolution,2026-07-17,84.0,120
+me55,30th Celebration,Mega Evolution,2026-09-16,128.0,161
+me55c,30th Celebration: Classic Collection,Mega Evolution,2026-09-16,,30
