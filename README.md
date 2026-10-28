@@ -36,6 +36,18 @@ python pokeprice/fetch_cards.py --images   # optional: also download card images
 
 ### 2. eBay sold listings (real-world test set)
 
+**Choose the cards first** (before looking at eBay, to avoid selection bias):
+
+```bash
+python pokeprice/select_ebay_cards.py          # -> data/ebay_target_cards.csv
+```
+
+Seeded random sample, equal allocation over 15 strata (rarity group x era), from
+cards priced >= $1 (cheaper cards rarely have 3 sales); promos are excluded because
+sellers omit the `/total` and titles cannot be matched reliably. Both choices are
+limitations to state in the report. Work down each stratum's `order` and stop when
+it has 8 cards with >= 3 sold listings; the rest are spares.
+
 We do **not** scrape eBay (it breaches eBay's User Agreement) and eBay's sold-item
 API (Marketplace Insights) is restricted to approved developers. Sold listings are
 collected **by hand** from ebay.com → Sold Items into `data/ebay_sold.csv`

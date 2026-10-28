@@ -51,3 +51,12 @@ adapted from earlier code.
   (2 cards, 6 sales), then deleted. No real eBay sold data exists yet.
 * Known gap: "TAG" grading is not caught by the `graded` filter (adding it naively would
   reject "Tag Team" cards).
+
+## 28 Oct 2026: eBay card selection (Claude Code, Sonnet 5.5)
+* Wrote `pokeprice/select_ebay_cards.py`: seeded stratified (rarity group x era) worklist
+  of cards to look up by hand on eBay Sold Items, so card choice is fixed before seeing
+  listings. Default seed 42 -> 189 candidates, 15 strata, 8 wanted per stratum (120 cards,
+  >= 360 listings at >= 3 sales each). Two strata (common/uncommon, 2020-2025) have only
+  3-4 cards priced >= $1, so they are small.
+* Design choices that bias the eBay set (to be stated in the report): price floor $1, no promos.
+* Not yet verified against real eBay listings; no real sold data exists yet.
