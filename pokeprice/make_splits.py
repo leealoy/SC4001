@@ -11,9 +11,9 @@ split_random    Cards are shuffled at random (set-agnostic) with the same
                 train/val/test sizes as the temporal split.  Used only to show how
                 much a random split overstates performance.
 
-eBay cards (data/ebay_cards.csv, if it exists) get the label "ebay" in BOTH splits
-and are never used for training, early stopping or tuning.  Cards with no usable
-price get the label "none".
+Cards with no usable TCGplayer price get the label "none".  Live eBay asking
+prices are a separate exploratory snapshot and are never used as labels or to
+construct these splits.
 
 Usage: python pokeprice/make_splits.py --test-months 12 --val-months 12
 """
@@ -34,15 +34,16 @@ def main():
     d = Path(args.data)
 
     cards = pd.read_csv(d / "cards.csv", parse_dates=["release_date"])
-    cards = cards[["card_id", "set_id", "release_date", "price_market"]].copy()
-    ebay = set()
-    if (d / "ebay_cards.csv").exists():
-        ebay = set(pd.read_csv(d / "ebay_cards.csv").card_id)
-    else:
-        print("WARNING: data/ebay_cards.csv not found; no eBay hold-out will be created")
+    required = {"card_id", "set_id", "release_date", "price_market", "supertype",
+                "pokemon_identity"}
+    missing = required - set(cards.columns)
+    if missing:
+        raise ValueError(
+            f"cards.csv is missing {sorted(missing)}; re-run fetch_cards.py so the "
+            "identity-aware schema is available")
+    cards = cards[list(required)].copy()
 
     priced = cards.price_market.notna() & (cards.price_market > 0)
-    is_ebay = cards.card_id.isin(ebay)
 
     # ---- temporal split: whole sets by release date -----------------------
     last = cards.loc[priced, "release_date"].max()
@@ -54,25 +55,37 @@ def main():
 
     # ---- random split with the same sizes ---------------------------------
     rng = np.random.default_rng(args.seed)
-    pool = cards.index[priced & ~is_ebay]
-    n_test = ((cards.split_temporal == "test") & priced & ~is_ebay).sum()
-    n_val = ((cards.split_temporal == "val") & priced & ~is_ebay).sum()
+    pool = cards.index[priced]
+    n_test = ((cards.split_temporal == "test") & priced).sum()
+    n_val = ((cards.split_temporal == "val") & priced).sum()
     perm = rng.permutation(pool)
     cards["split_random"] = "train"
     cards.loc[perm[:n_test], "split_random"] = "test"
     cards.loc[perm[n_test:n_test + n_val], "split_random"] = "val"
 
-    # ---- hold-outs and unusable rows override both splits -----------------
+    # ---- unusable rows override both splits -------------------------------
     for col in ["split_temporal", "split_random"]:
-        cards.loc[is_ebay & priced, col] = "ebay"
         cards.loc[~priced, col] = "none"
 
-    cards[["card_id", "set_id", "release_date", "split_temporal", "split_random"]].to_csv(
-        d / "splits.csv", index=False)
+    # Whether the Pokemon identity was available to the model during training.
+    # This supports a predeclared seen-vs-unseen identity analysis.  Missing
+    # identity is left NA rather than silently being treated as unseen.
+    for split_col in ["split_temporal", "split_random"]:
+        train_identities = set(cards.loc[
+            priced & (cards[split_col] == "train") & cards.pokemon_identity.notna(),
+            "pokemon_identity"])
+        seen_col = f"identity_seen_in_{split_col.removeprefix('split_')}_train"
+        cards[seen_col] = cards.pokemon_identity.isin(train_identities).astype("boolean")
+        cards.loc[cards.pokemon_identity.isna(), seen_col] = pd.NA
+
+    out_cols = ["card_id", "set_id", "release_date", "supertype", "pokemon_identity",
+                "split_temporal", "split_random", "identity_seen_in_temporal_train",
+                "identity_seen_in_random_train"]
+    cards[out_cols].to_csv(d / "splits.csv", index=False)
 
     # ---- report ------------------------------------------------------------
     n = priced.sum()
-    print(f"priced cards: {n}   eBay hold-out cards: {(is_ebay & priced).sum()}")
+    print(f"priced cards: {n}")
     print(f"latest priced release: {last.date()}  val_start>{val_start.date()}  test_start>{test_start.date()}")
     for col in ["split_temporal", "split_random"]:
         vc = cards[col].value_counts()
@@ -80,12 +93,10 @@ def main():
         print((vc.to_frame("n").assign(frac=lambda x: (x.n / n).round(3))).to_string())
 
     # ---- leakage checks (fail loudly) --------------------------------------
-    tt =cards[cards.split_temporal.isin(["train", "val", "test"]) & priced & ~is_ebay]
+    tt = cards[cards.split_temporal.isin(["train", "val", "test"]) & priced]
     assert (tt.groupby("set_id").split_temporal.nunique() == 1).all(), "a set spans two temporal splits"
     mx = lambda s: tt.loc[tt.split_temporal == s, "release_date"]
     assert mx("train").max() <= mx("val").min() <= mx("val").max() <= mx("test").min(), "temporal order violated"
-    for col in ["split_temporal", "split_random"]:
-        assert not (cards[col].isin(["train", "val"]) & is_ebay).any(), "eBay card leaked into training"
     print("\nleakage checks passed")
 
 

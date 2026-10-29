@@ -90,7 +90,7 @@
 </head>
 <body>
 <header>
-  <h1>PokePrice · eBay prices</h1>
+  <h1>PokePrice · live eBay asking prices</h1>
   <span class="pill" id="soldStatus"><span class="dot"></span><span>Sold data: loading…</span></span>
   <span class="pill" id="askStatus"><span class="dot"></span><span>Active listings: checking…</span></span>
   <button id="review">Review rejected</button>
@@ -113,10 +113,10 @@
     <option value="newest">Newest sets</option>
     <option value="oldest">Oldest sets</option>
     <option value="name">Name A→Z</option>
-    <option value="ebay_price">Sold median high→low</option>
-    <option value="ebay_sales">Most sold listings</option>
+    <option value="ebay_price">Legacy sold median high→low</option>
+    <option value="ebay_sales">Legacy sold listing count</option>
   </select>
-  <label class="check"><input type="checkbox" id="onlyEbay"> Only cards with sold data</label>
+  <label class="check"><input type="checkbox" id="onlyEbay"> Only cards with legacy sold data</label>
   <label class="check"><input type="checkbox" id="tileAsk" checked> Active prices on tiles</label>
   <button class="primary" id="go">Search</button>
 </div>
@@ -133,7 +133,7 @@
   </section>
   <aside>
     <div class="panel">
-      <h2>Hand-collected sold data</h2>
+      <h2>Legacy hand-collected sold data</h2>
       <div class="stats">
         <div class="stat"><b id="sCards">–</b><span>cards with ≥min sales</span></div>
         <div class="stat"><b id="sClean">–</b><span>clean sales</span></div>
@@ -151,7 +151,7 @@
         <div class="stat"><b id="aFail">0</b><span>calls failed</span></div>
       </div>
       <p class="note">Asking prices of current Buy It Now listings (auctions show the current bid), same title
-        filters as the sold data. Not sale prices — don't mix them with the sold set.</p>
+        title filters. These are not sale prices and are not supervised labels.</p>
     </div>
     <div class="panel">
       <h2>Request log</h2>
@@ -216,9 +216,7 @@ async function loadStatus() {
     banner("soldBanner", "data/cards.csv not found — run <code>python pokeprice/fetch_cards.py</code> first.");
   } else if (s.ebay_cards == null) {
     setPill("soldStatus", "warn", "No sold data yet");
-    banner("soldBanner", `No hand-collected sold data yet. Copy sold listings into <code>data/ebay_sold.csv</code>
-      (columns as in <code>data/ebay_sold_TEMPLATE.csv</code>), then run
-      <code>python pokeprice/build_ebay.py --start 2026-09-01 --end 2026-10-15</code> and press “Reload data”.`);
+    banner("soldBanner", "No authorised sold-price dataset is configured. This is expected in the revised study; use the live asking-price panel below.");
   } else {
     setPill("soldStatus", "ok", `Sold data: ${n(s.ebay_cards)} cards · ${n(s.ebay_clean)} sales`);
     banner("soldBanner", s.ebay_cards === 0 ? "ebay_cards.csv is empty: no card reached the minimum number of clean sales. Check “Review rejected”." : "");

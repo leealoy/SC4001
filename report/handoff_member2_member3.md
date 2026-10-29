@@ -1,45 +1,106 @@
-# Handoff from Member 1 → Members 2 and 3
+# Project handoff: data, modelling and analysis
 
-Everything here was produced by `pokeprice/` and is reproducible from the README.
+## Research questions
 
-## Data (do not regenerate unless told)
-* `data/cards.csv` — 20,670 cards, 19,486 with a price. Join key `card_id`.
-  Target = `log1p(price_market)` (TCGplayer market price, standard printing).
-  Metadata columns: rarity, supertype, subtypes, types, hp, artist, set_id, series,
-  number, printed_total, n_attacks, n_abilities, retreat_cost, regulation_mark, release_date.
-* `data/splits.csv` — `split_temporal` (MAIN) and `split_random`, values
-  `train | val | test | ebay | none`. Use ONLY these columns to pick rows.
-* Images: `python pokeprice/fetch_cards.py --images` -> `data/images/<card_id>.png`
-  (small official scans; `--image-size large` for large). ~19k files, not in git.
-* eBay hold-out: `data/ebay_cards.csv` (when collected). Rows labelled `ebay`.
+1. After controlling for Pokémon identity, do visual features improve price
+   prediction beyond structured metadata?
+2. Does the visual contribution persist on sets released after every training
+   set?
+3. Are improvements produced by artwork, or by shortcuts such as card layout,
+   text and set-specific design?
+4. Can residual gated fusion with modality dropout generalise better than
+   ordinary concatenation?
 
-## Rules
-1. `test` and `ebay` rows are never used for training, early stopping, model selection,
-   feature selection or hyperparameter tuning. Use `val` (or CV inside `train`).
-2. Fit every scaler / encoder / PCA on `train` only.
-3. Run 3 seeds (0, 1, 2); report mean ± std.
-4. Use the same metrics: `from baselines import metrics` (add `pokeprice/` to `sys.path`)
-   -> MAE on log price, Spearman, median abs % error, share within 2x.
-5. Report negative results too.
+The supervised target is `log1p(price_market)`, where `price_market` is the
+TCGplayer market price for one standard printing of a card on 29 October 2026.
+This is cross-sectional price prediction, not historical price forecasting.
 
-## Numbers to beat (test split, mean of 3 seeds, MAE on log price)
+## Dataset and cohorts
 
-| Split | Rarity-median | HistGB | MLP |
-|---|---|---|---|
-| Temporal (main) | 0.412 | 0.415 ± 0.025 | 0.523 ± 0.073 |
-| Random | 0.725 | 0.349 ± 0.004 | 0.364 ± 0.007 |
+The Pokémon TCG API snapshot contains 20,670 cards, of which 19,486 have a
+usable standard-printing market price. The primary structured-data cohort has
+16,423 priced Pokémon cards with a National Pokédex identity across 160 sets.
+Ninety-eight priced Pokémon cards without an API identity are excluded.
 
-Full table: `results/baseline_summary_split_*.csv`; per-card predictions for failure
-analysis: `results/baseline_preds_split_*.csv`.
+The controlled visual cohort contains 11,509 standard framed cards across 12
+reviewed layout families. Special rarities, irregular mechanics, promotional or
+unsupported layouts, non-Pokémon cards, cards without usable prices or identity,
+and cards without a local image are recorded in the exclusions file rather than
+force-fitted to an unreliable artwork crop.
 
-## Things to know
-* On the temporal split metadata-only models do NOT beat rarity-median; the gap to beat is small.
-  The image model must be compared against the temporal baseline, not the random one.
-* Unseen set ids map to an "unknown" code in the baselines. Hypothesis 2 (memorisation of
-  set-specific pricing) is untested: ablate `set_id`, `series`, `age_years`, `printed_total`
-  (Member 3).
-* Test sets (2025) have median price $0.21 vs $1.13 in training: newer prices may not have
-  settled. Discuss as a confound.
-* Prices only exist up to 14 Nov 2025; 2026 sets have none in the API.
-* The MLP baseline is best on val but worst on test; 7 test sets is a noisy sample.
-* Credit pretrained weights (CLIP / ResNet), scikit-learn and the Pokémon TCG API in the report.
+The temporal visual cohort contains 10,253 training cards, 604 validation cards
+and 652 test cards. Every visual model and its corresponding metadata baseline
+must use this same cohort for a paired comparison.
+
+## Data contract
+
+- `data/cards.csv`: card metadata, target price, National Pokédex identity and
+  the safe local `image_file` name; join key `card_id`.
+- `data/splits.csv`: fixed temporal and random partitions plus seen/unseen
+  identity flags.
+- `data/images/<image_file>`: official full-card scans.
+- `data/artwork_layout_templates.csv`: reviewed normalised artwork box for each
+  layout family.
+- `data/artwork_layout_assignments.csv`: eligible visual-cohort cards and their
+  assigned families.
+- `data/artwork_layout_exclusions.csv`: excluded cards and explicit reasons.
+- `data/artwork_layout_audit.csv`: seeded manual-audit sample of 12 cards per
+  family.
+- `data/image_views/manifest.csv`: 34,527 matched rows covering `full_card`,
+  `artwork_only` and `layout_only`, including split, family, crop coordinates,
+  image paths and hashes.
+
+The family template is used unless a future audited exception file is supplied
+to `prepare_image_views.py` through `--overrides`. No per-card override file is
+currently required.
+
+## Member 2: model contract
+
+Compare the following models on identical cards:
+
+1. Identity-plus-metadata baseline.
+2. Frozen pretrained image encoder with a regression head.
+3. Ordinary image-plus-metadata concatenation.
+4. Residual gated fusion without modality dropout.
+5. Residual gated fusion with modality dropout.
+
+Run the image and fusion comparisons separately for `full_card`,
+`artwork_only` and `layout_only`. Keep the encoder, metadata representation,
+training budget and seeds matched when comparing fusion mechanisms. Tune only
+on validation data. If a residual method uses a pretrained metadata prediction,
+its training predictions must be generated out of fold.
+
+Each model writes prediction rows with:
+
+```text
+card_id,set_id,model,seed,eval,y_true_log,y_pred_log
+```
+
+Include `pokemon_identity`, `identity_seen_in_train`, `feature_set` and
+`image_condition` where applicable. Use seeds 0, 1 and 2.
+
+## Member 3: analysis contract
+
+- Treat the temporal split as the main experiment and the random split as a
+  diagnostic.
+- Report seen-identity and unseen-identity results.
+- Compare full-card, artwork-only and layout-only predictions on identical card
+  IDs.
+- Run image and metadata modality ablations.
+- Report per-set metrics and paired confidence intervals from a whole-set
+  bootstrap.
+- Audit duplicate or reprinted art using manifest hashes.
+- Analyse errors by identity, rarity, set and price range.
+
+Use `pokeprice/evaluate_predictions.py` so all models use the same metrics and
+pairing rules.
+
+## Leakage controls
+
+1. Test data cannot be used for tuning, early stopping, crop selection or image
+   transformations.
+2. Fit encoders, scalers, target encoders and group statistics using training
+   rows only.
+3. Use the supplied splits; do not create model-specific partitions.
+4. Compare models on identical card IDs.
+5. Keep active eBay asking prices outside supervised training and evaluation.

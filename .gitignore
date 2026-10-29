@@ -1,6 +1,7 @@
 # large / regenerable: rebuild with pokeprice/fetch_cards.py
 data/raw/
 data/images/
+data/image_views/
 __pycache__/
 .env
 *.pyc

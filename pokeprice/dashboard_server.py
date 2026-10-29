@@ -1,7 +1,10 @@
-"""Local dashboard for checking the hand-collected eBay sold prices.
+"""Local dashboard for inspecting live eBay asking prices.
 
-Serves dashboard.html and a small JSON API over the project's own CSV files, so it
-needs no network access except for card images (images.pokemontcg.io):
+Active, unsold listings come from the eBay Browse API. They are asking prices,
+not sale prices or labels for the main experiment. Legacy hand-collected sold
+CSVs can still be displayed when present, but are not part of the revised study.
+
+The dashboard serves dashboard.html and a small JSON API over local CSV files:
 
     data/cards.csv, data/sets.csv        card metadata (from fetch_cards.py)
     data/ebay_cards.csv                  median sold price per card   (build_ebay.py)
@@ -9,9 +12,7 @@ needs no network access except for card images (images.pokemontcg.io):
     data/ebay_rejected.csv               removed by a filter, with reason
     data/ebay_unmatched.csv              passed filters, no unique card match
 
-Active (unsold) listings come live from the eBay Browse API.  These are ASKING
-prices, not sale prices, and are shown separately from the sold data.  The Browse
-API needs only the default OAuth scope, so ordinary production keys work.  Keys
+The Browse API needs only the default OAuth scope. Keys
 (never committed; .env is git-ignored) go in the repo-root .env:
     EBAY_CLIENT_ID=...        # App ID
     EBAY_CLIENT_SECRET=...    # Cert ID
@@ -48,7 +49,10 @@ from urllib.parse import parse_qs, urlparse
 import pandas as pd
 import requests
 
-from build_ebay import REJECT_PATTERNS, norm_num, number_candidates, tokens
+try:  # support direct script execution and package imports
+    from .build_ebay import REJECT_PATTERNS, norm_num, number_candidates, tokens
+except ImportError:
+    from build_ebay import REJECT_PATTERNS, norm_num, number_candidates, tokens
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
@@ -126,11 +130,11 @@ class Browse:
         self.token_exp = time.time() + int(body.get("expires_in", 7200))
         return self.token
 
-    def search(self, q, limit=50):
+    def search(self, q, limit=50, use_cache=True):
         """item_summary/search for Buy It Now and auction listings (cached on disk)."""
         key = hashlib.sha1(f"browse|{self.env}|{q}|{limit}".encode()).hexdigest()
         f = CACHE_DIR / f"{key}.json"
-        if f.exists() and time.time() - f.stat().st_mtime < CACHE_TTL:
+        if use_cache and f.exists() and time.time() - f.stat().st_mtime < CACHE_TTL:
             return json.loads(f.read_text()), True
         r = self.session.get(
             f"{self.base}/buy/browse/v1/item_summary/search",
@@ -200,11 +204,14 @@ def summarise_active(data, card):
         ship = (it.get("shippingOptions") or [{}])[0].get("shippingCost") or {}
         title = it.get("title", "")
         items.append(dict(
+            item_id=it.get("itemId"),
             title=title, price=float(price["value"]),
+            currency=price.get("currency"),
             kind="auction" if "AUCTION" in opts and "FIXED_PRICE" not in opts else "buy_it_now",
             bids=it.get("bidCount"), ends=it.get("itemEndDate"),
             shipping=float(ship["value"]) if ship.get("value") is not None else None,
             condition=it.get("condition"), url=it.get("itemWebUrl"),
+            seller=(it.get("seller") or {}).get("username"),
             image=(it.get("image") or {}).get("imageUrl"),
             reject=reject_reason(title, name, number, card.get("printed_total"), card.get("set_name", ""))))
     items.sort(key=lambda s: s["price"])

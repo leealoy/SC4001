@@ -1,17 +1,13 @@
-"""Choose, IN ADVANCE and at random, which cards to look up on eBay Sold Items.
+"""Choose, in advance, cards for a live eBay asking-price snapshot.
 
-Choosing cards before looking at eBay avoids selection bias (picking whatever
-has convenient listings).  Cards are sampled with a fixed seed from strata of
-rarity group x era, equal allocation per stratum, from cards that have a
-TCGplayer price >= --min-price (cheaper cards rarely have >=3 sales in a short
-window).  NOTE this price floor means the eBay set under-represents bulk
-commons; state this in the report.
+Choosing cards before querying eBay avoids retaining only cards with convenient
+active listings. Cards are sampled with a fixed seed from rarity-group x era
+strata. The optional TCGplayer price floor means the sample under-represents
+bulk commons and must be reported.
 
-Output: data/ebay_target_cards.csv, sorted so you work through each stratum in
-`order` (1, 2, 3, ...) and stop a stratum once it has --keep cards with >=3 sold
-listings.  Candidates beyond --keep are spares for cards with too few sales.
-The TCGplayer price is NOT shown to you while collecting: it is in cards.csv,
-not in this worklist, so you do not anchor on it.
+Output: data/ebay_target_cards.csv. The TCGplayer price is not copied into this
+worklist. Active prices are asking prices, not realised sales and not supervised
+labels for the main experiment.
 
 Usage: python pokeprice/select_ebay_cards.py --per-stratum 14 --seed 42
 """
@@ -43,7 +39,6 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="data")
     ap.add_argument("--per-stratum", type=int, default=14, help="candidates drawn per stratum")
-    ap.add_argument("--keep", type=int, default=8, help="cards wanted per stratum (rest are spares)")
     ap.add_argument("--min-price", type=float, default=1.0)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--include-promos", action="store_true",
@@ -53,7 +48,8 @@ def main():
     d = Path(args.data)
 
     c = pd.read_csv(d / "cards.csv", parse_dates=["release_date"])
-    c = c[c.price_market.notna() & (c.price_market >= args.min_price) & (c.supertype == "Pokémon")].copy()
+    is_pokemon = c.supertype.fillna("").astype(str).str.lower().str.startswith("pok")
+    c = c[c.price_market.notna() & (c.price_market >= args.min_price) & is_pokemon].copy()
     c["era"] = None
     for name, lo, hi in ERAS:
         c.loc[(c.release_date >= lo) & (c.release_date < hi), "era"] = name
@@ -71,19 +67,15 @@ def main():
         parts.append(g)
     out = pd.concat(parts)
     out["number_full"] = out.number.astype(str) + "/" + out.printed_total.astype("Int64").astype(str)
-    # string to paste into eBay search; avoids words our filters reject
+    # Query is fixed before any live listing response is inspected.
     out["search_query"] = out.name + " " + out.number_full + " " + out.set_name
-    out["is_spare"] = out.order > args.keep
-    for col in ["n_sold_found", "notes"]:
-        out[col] = ""
+    out["notes"] = ""
     out = out.sort_values(["stratum", "order"])
-    cols = ["stratum", "order", "is_spare", "card_id", "search_query", "name", "set_name",
-            "number_full", "rarity", "release_date", "n_sold_found", "notes"]
+    cols = ["stratum", "order", "card_id", "search_query", "name", "set_name",
+            "number_full", "rarity", "release_date", "notes"]
     out[cols].to_csv(d / "ebay_target_cards.csv", index=False)
 
-    print(f"{len(out)} candidates in {out.stratum.nunique()} strata "
-          f"(wanted {args.keep}/stratum -> {out.stratum.nunique() * args.keep} cards, "
-          f">=3 sales each -> >= {3 * out.stratum.nunique() * args.keep} listings)")
+    print(f"{len(out)} preselected cards in {out.stratum.nunique()} strata")
     print(out.groupby("stratum").size().to_string())
     small = c.groupby("stratum").size()
     print("strata smaller than requested:", small[small < args.per_stratum].to_dict() or "none")

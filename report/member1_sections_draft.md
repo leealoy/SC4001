@@ -1,92 +1,155 @@
-# Draft report sections — Member 1 (dataset, baseline, experimental setup)
+# Member 1 report sections
 
-> DRAFT. Every number below comes from a run in this repository (`results/`).
-> Items in [BRACKETS] are not done yet and must be filled in or deleted before
-> submission. Rewrite in your own words and check every claim.
+## Research framing
 
-## 3. Dataset
+This project investigates whether card images contribute predictive information
+about Pokémon-card prices beyond structured metadata and Pokémon identity. It
+also tests whether visual gains persist on chronologically later sets and
+whether a model learns artwork or shortcuts from text, borders and set-specific
+layout. The methodological comparison evaluates ordinary feature concatenation
+against residual gated fusion with modality dropout.
 
-**Source.** Card metadata, official card images and TCGplayer market prices come
-from the Pokémon TCG API (pokemontcg.io). We downloaded 20,670 cards from 176 sets
-(released 1999–2026) in October 2026; the price snapshot is dated 15 Oct 2026.
+## Dataset
 
-**Target.** `y = log1p(price)`, where price is the TCGplayer market price in USD of the
-card's standard printing (normal, else holofoil; vintage "unlimited" prints). Reverse
-holo and 1st-edition prices are ignored so each card has exactly one price. 19,486 cards
-have such a price. Prices are heavily right-skewed (median $0.95 across all priced cards, up
-to $9,200), which motivates the log transform.
+### Source and target
 
-**Coverage gap.** The API has no TCGplayer prices for sets released after 14 Nov 2025
-(six sets, 2026), so these cards are excluded. The temporal test window therefore ends
-14 Nov 2025.
+Card metadata, official scans and TCGplayer market prices were collected from
+the Pokémon TCG API on 29 October 2026. The snapshot contains 20,670 cards;
+19,486 have a usable market price for a standard printing. Where available, the
+standard-price selection covers normal, holofoil, unlimited and unlimited
+holofoil variants. The regression target is
 
-**Metadata features.** Rarity, supertype, subtypes, energy type, HP, artist, set id,
-series, regulation mark, card number relative to set size, printed set size, number of
-attacks and abilities, retreat cost and set age (years since release).
+```text
+y = log(1 + price_market).
+```
 
-**Real-world test set (eBay).** [Not yet collected.] Sold listings are collected by
-hand from ebay.com's Sold Items filter; we do not scrape eBay because that breaches its
-User Agreement, and eBay's Marketplace Insights API is restricted to approved developers.
-Cards are chosen in advance across rarities and eras, raw English singles only, USD, a
-fixed date window, ≥3 sales per card; the item price (without shipping) is used.
-Listings are filtered (graded, lots, fakes, sealed, non-English, damaged, variants),
-matched to card ids by number + name + set, per-card outliers removed (a sale more than
-2.5× from the card's median), and aggregated to a median. Rejected and unmatched listings
-are reviewed by hand. [Report n cards / n sales and the match audit here.]
+The logarithm reduces the influence of the strongly right-skewed price
+distribution. Because the target is a single dated snapshot, the task is
+cross-sectional price prediction rather than price forecasting.
 
-## 4. Experimental setup
+### Primary cohort and identity control
 
-**Splits.** *Temporal (main):* whole sets are assigned by release date, so test sets are
-never seen in training and are newer than all training data. Train: 16,995 cards from 147
-sets (1999 – Nov 2023); validation: 1,214 cards from 6 sets (Jan – Nov 2024); test: 1,277
-cards from 7 sets (Jan – Nov 2025). No set spans two splits (checked by assertion).
-*Random (comparison):* cards are shuffled with the same split sizes, ignoring sets.
-eBay cards are excluded from training, validation and tuning in both splits.
+The primary structured-data cohort contains 16,423 priced Pokémon cards from
+160 sets with a usable National Pokédex identity. Trainer and Energy cards are
+outside the primary cohort because Pokémon identity is undefined for them.
+Ninety-eight priced Pokémon cards without an API Pokédex identity are also
+excluded.
 
-**Leakage control.** Encoders, scalers and medians are fitted on training rows only;
-unseen categories (e.g. every test set id) map to an "unknown" code. Hyperparameters were
-fixed in advance and not tuned; the test split and eBay set are only scored.
+Identity is derived from sorted National Pokédex numbers rather than the printed
+card name. Variants such as Charizard, Charizard ex and Charizard VMAX therefore
+share a species identity while mechanics and subtypes remain structured card
+attributes. Multi-Pokémon cards retain their tuple of Pokédex numbers. This
+controls stable between-character differences, but it is not a direct measure
+of time-varying popularity or temporary hype.
 
-**Metrics.** MAE on log price (primary), Spearman rank correlation, median absolute
-percentage error in USD, and the share of predictions within a factor of 2 of the true
-price. Neural/boosted models use 3 seeds (0–2); we report mean ± std over seeds.
+### Structured metadata
 
-## 5. Baselines
+The structured predictors are rarity, supertype, subtypes, energy type, HP,
+artist, set ID, series, regulation mark, card number relative to printed set
+size, printed set size, number of attacks and abilities, retreat cost, and age
+at the snapshot date. Categorical encoders, numerical imputers and scalers are
+fit on training rows only.
 
-Three metadata-only models: (i) rarity-median — the training median log price of the
-card's rarity; (ii) HistGradientBoosting (500 iterations max, lr 0.05, early stopping on
-10 % of the training rows); (iii) an MLP (128-64, one-hot + standardised inputs, early
-stopping). Test results (3 seeds):
+### Controlled visual cohort
 
-| Split | Model | MAE (log) | Spearman | Within 2× |
-|---|---|---|---|---|
-| Random | Rarity-median | 0.725 | 0.666 | 0.413 |
-| Random | HistGB | 0.349 ± 0.004 | 0.936 | 0.643 |
-| Random | MLP | 0.364 ± 0.007 | 0.928 | 0.631 |
-| Temporal | Rarity-median | 0.412 | 0.784 | 0.410 |
-| Temporal | HistGB | 0.415 ± 0.025 | 0.779 | 0.412 |
-| Temporal | MLP | 0.523 ± 0.073 | 0.773 | 0.362 |
+A complete card scan contains artwork as well as text, borders, rarity symbols
+and set-specific design. To separate these signals, standard framed Pokémon
+cards are assigned to 12 generation-aware layout families. Each family has a
+manually reviewed normalised artwork box, and a seeded sample of 12 cards per
+family is retained for the recorded quality audit. Special rarities, irregular
+mechanics, promotions and unsupported layouts are explicitly excluded from this
+rectangular-crop experiment.
 
-**Observations (descriptive, not yet explained).**
-* On a random split, the boosted model halves the error of the rarity-median
-  (0.349 vs 0.725); on the temporal split it does **not** beat it (0.415 vs 0.412).
-  Metadata that includes set identity and set age helps a lot when the sets are seen in
-  training and gives no advantage on unseen future sets. This is consistent with
-  Hypothesis 2 (partial memorisation of set-specific pricing), but we have not run the
-  ablation that would show it (e.g. removing set id / age). [Member 3]
-* Any gain from images must be measured against the *temporal* rarity-median (0.412), a
-  much harder bar than the random-split numbers suggest.
-* Price levels shift: the median test-set price is $0.21 against $1.13 in training, so
-  absolute-percentage metrics (median error ≈ 100 %) are dominated by cheap cards.
-* The MLP is best on validation (MAE 0.385) but worst on test (0.523) with high seed
-  variance (std 0.073); with only 7 test sets the temporal test is noisy. We report
-  both and do not select on test.
+The resulting visual cohort has 11,509 cards. Each card supplies three matched
+conditions:
 
-**Limitations.** One snapshot of TCGplayer prices; market price is itself an estimate;
-the temporal test covers 7 sets; eBay results pending.
+- `full_card`: the complete official scan;
+- `artwork_only`: the cropped illustration resized to 224 × 224 pixels; and
+- `layout_only`: the complete card with the artwork region replaced by grey.
 
-## For Member 2 (handoff)
-* Use `data/splits.csv` (`split_temporal`) and `data/cards.csv`; image URLs are in
-  `image_url` and images download with `fetch_cards.py --images` to `data/images/<card_id>.png`.
-* Baselines to beat on temporal test: rarity-median 0.412, HistGB 0.415 (MAE log).
-* Run your models with seeds 0–2 and report with `baselines.metrics()`-style metrics.
+The visual manifest contains 34,527 rows and records the card, layout family,
+split, crop coordinates, image path and hashes. Layout-family coverage is:
+
+| Layout family | Cards |
+|---|---:|
+| Black & White standard | 1,060 |
+| Diamond & Pearl / Platinum standard | 1,124 |
+| E-Card standard | 411 |
+| EX-era standard | 1,282 |
+| HeartGold & SoulSilver standard | 390 |
+| Mega Evolution standard | 176 |
+| Sun & Moon standard | 1,596 |
+| Scarlet & Violet standard | 1,827 |
+| Sword & Shield standard | 1,720 |
+| WotC Base / Gym standard | 541 |
+| WotC Neo standard | 301 |
+| XY standard | 1,081 |
+
+## Experimental setup
+
+### Splits
+
+The main temporal split assigns complete sets by release date. Training contains
+sets released from 9 January 1999 through 3 November 2023, validation contains
+sets from 26 January through 8 November 2024, and test contains sets from
+17 January through 14 November 2025. Thus every test set is later than every
+training set.
+
+| Cohort | Train | Validation | Test |
+|---|---:|---:|---:|
+| Primary identity-controlled cohort | 14,402 | 953 | 1,068 |
+| Matched visual cohort | 10,253 | 604 | 652 |
+
+The primary temporal partitions contain 147 training sets, six validation sets
+and seven test sets. Five validation cards and nine test cards have identities
+not observed in temporal training. A seeded random split with comparable sizes
+is used only to diagnose the effect of chronological domain shift; it is not the
+main generalisation claim.
+
+### Baselines
+
+The structured-data baselines are:
+
+1. training-set rarity median;
+2. training-set identity median with a global-median fallback;
+3. HistGradientBoosting and multilayer perceptron models using identity only;
+4. the same model families using metadata without identity; and
+5. the same model families using identity plus metadata.
+
+The boosted models use five-fold cross-fitted target encoding for categorical
+training features. The MLP uses an exact one-hot identity representation,
+frequency-aware one-hot encoding for other categorical variables, median
+imputation and standardisation for numerical variables. Stochastic models use
+seeds 0, 1 and 2.
+
+On the primary temporal test cohort, the mean log-price MAE was 0.659 ± 0.014
+for HistGradientBoosting with identity and metadata, and 0.522 ± 0.030 for the
+identity-plus-metadata MLP. The rarity-median reference achieved 0.417. These
+figures describe the full primary cohort; the multimodal experiment must train
+and compare its metadata baseline on the same 11,509-card visual cohort.
+
+### Evaluation
+
+The primary metric is MAE on log price. Secondary metrics are Spearman rank
+correlation, median absolute percentage error after conversion to dollars, and
+the proportion of predictions within a factor of two of the target price.
+Results are reported overall, by set and by whether the Pokémon identity was
+seen during training. Paired model differences use identical cards and
+confidence intervals from bootstrapping complete sets.
+
+All preprocessing is fitted on training data. Validation data are used for
+model selection and early stopping. Test rows are not used to select image
+transformations, layout templates, features or hyperparameters.
+
+## Limitations
+
+- The target is one dated TCGplayer price snapshot and does not describe price
+  dynamics.
+- National Pokédex identity controls stable character differences but does not
+  directly measure contemporary popularity.
+- Chronologically later sets test later-set generalisation, not future prices
+  for existing cards.
+- The rectangular artwork analysis represents standard framed layouts and does
+  not cover every promotional, full-art or special-mechanic design.
+- Active eBay listings are asking prices that may never result in sales; they
+  remain outside supervised modelling and evaluation.

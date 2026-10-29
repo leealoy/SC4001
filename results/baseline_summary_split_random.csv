@@ -1,9 +1,0 @@
-,,mae_log,mae_log,spearman,spearman,medape,medape,within_2x,within_2x
-,,mean,std,mean,std,mean,std,mean,std
-eval,model,,,,,,,,
-test,hgb,0.349,0.004,0.936,0.001,0.483,0.016,0.643,0.006
-test,mlp,0.364,0.007,0.928,0.002,0.486,0.002,0.631,0.008
-test,rarity_median,0.725,,0.666,,0.8,,0.413,
-val,hgb,0.366,0.001,0.936,0.001,0.483,0.015,0.655,0.011
-val,mlp,0.382,0.005,0.93,0.002,0.506,0.024,0.634,0.013
-val,rarity_median,0.723,,0.654,,0.8,,0.391,

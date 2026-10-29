@@ -1,129 +1,213 @@
-# Does the artwork matter? Pokémon card price prediction across unseen sets
+# Artwork or shortcut? Identity-controlled Pokémon card price prediction across unseen sets
 
-SC4001 group project. This repository currently holds the **data, split and
-metadata-baseline** part (Member 1). Image encoders / fusion models and the
-robustness experiments are added by Members 2 and 3.
+SC4001 group project. The supervised target is a dated snapshot of TCGplayer
+market prices. Live eBay listings, when collected, are unsold **asking prices**
+and are kept as a separate exploratory dataset.
+
+## Research questions
+
+1. After controlling for Pokémon identity and structured metadata, do visual
+   features improve price prediction?
+2. Does the visual contribution persist on sets released after every training
+   set?
+3. Is any improvement produced by artwork, or by card layout, text and
+   set-specific design shortcuts?
+4. Does residual gated fusion with modality dropout generalise better than
+   ordinary concatenation?
+
+Questions 1–3 are the empirical questions. Question 4 is the proposed-method
+hypothesis and should be evaluated under the same splits and tuning budget.
 
 ## Setup
 
-Python 3.11. Dependencies:
+Python 3.11:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Reproducing the data and baselines
-
-Run everything from the repository root.
-
-### 1. Download cards and prices (Pokémon TCG API)
+## 1. Download the card data
 
 ```bash
-python pokeprice/fetch_cards.py            # metadata + prices -> data/cards.csv
-python pokeprice/fetch_cards.py --images   # optional: also download card images
+python pokeprice/fetch_cards.py
+python pokeprice/fetch_cards.py --images --image-size large
 ```
 
-* No API key is needed. A free key from pokemontcg.io raises the rate limit:
-  `export POKEMONTCG_API_KEY=...` (never commit it).
-* The public API often returns HTTP 500/502; the script retries with backoff and is
-  **resumable** (pages are cached in `data/raw/`). Re-run it if it gives up.
-* Target = `log1p(TCGplayer market price, USD)` of the card's **standard printing**
-  (`normal`, else `holofoil`; vintage sets use `unlimited` / `unlimitedHolofoil`).
-  Reverse-holo and 1st-edition prices are ignored.
-* Writes `data/download_date.txt`, the date used for the "set age" feature.
-* The API had no TCGplayer prices for sets released after 2025-11-14 when we
-  downloaded (Oct 2026), so those cards are excluded.
+The Pokémon TCG API supplies metadata, official scans and TCGplayer prices.
+`cards.csv` includes both the printed name and `national_pokedex_numbers` /
+`pokemon_identity`. Its `image_file` column gives the cross-platform-safe local
+filename; reserved characters in unusual card IDs are percent-encoded. National
+Pokédex identity is used because printed names such
+as Charizard, Charizard ex and Charizard VMAX should not be treated as unrelated
+characters when controlling for stable popularity.
 
-### 2. eBay sold listings (real-world test set)
+The target is `log1p(price_market)` for one standard printing per card. Prices
+are a single dated snapshot, not a price history or forecasting dataset.
 
-**Choose the cards first** (before looking at eBay, to avoid selection bias):
+The downloader caches raw API pages and is resumable. Set
+`POKEMONTCG_API_KEY` to use an optional free API key. Do not commit credentials.
 
-```bash
-python pokeprice/select_ebay_cards.py          # -> data/ebay_target_cards.csv
-```
-
-Seeded random sample, equal allocation over 15 strata (rarity group x era), from
-cards priced >= $1 (cheaper cards rarely have 3 sales); promos are excluded because
-sellers omit the `/total` and titles cannot be matched reliably. Both choices are
-limitations to state in the report. Work down each stratum's `order` and stop when
-it has 8 cards with >= 3 sold listings; the rest are spares.
-
-We do **not** scrape eBay (it breaches eBay's User Agreement) and eBay's sold-item
-API (Marketplace Insights) is restricted to approved developers. Sold listings are
-collected **by hand** from ebay.com → Sold Items into `data/ebay_sold.csv`
-(columns: see `data/ebay_sold_TEMPLATE.csv`). Protocol: cards chosen in advance
-across rarities and eras; raw English singles; USD; fixed date window; ≥3 sales
-per card; item price only (shipping excluded).
-
-```bash
-python pokeprice/build_ebay.py --start 2026-09-01 --end 2026-10-15
-```
-
-To save retyping, paste a copied "Sold items" page into a text file and convert it
-(this does not contact eBay; you do the searching and copying by hand):
-
-```bash
-python pokeprice/parse_ebay_paste.py paste.txt --card-id base1-4   # appends to data/ebay_sold.csv
-```
-
-Filters out graded, lots, fakes, sealed product, non-English, damaged and variant
-listings; matches titles to card ids by card number + name + set; removes
-per-card price outliers; aggregates to a median per card. Rejected and unmatched
-listings are written to `data/ebay_rejected.csv` / `data/ebay_unmatched.csv` and
-**must be reviewed by hand**. Output: `data/ebay_cards.csv`.
-
-### Checking the eBay data (dashboard)
-
-```bash
-python pokeprice/dashboard_server.py     # then open http://127.0.0.1:8765/
-```
-
-Local page for checking the hand-collected data: per card, the clean sales and median from
-`build_ebay.py`, plus the rejected / unmatched rows to review by hand ("Review rejected").
-It also shows **active** eBay listings (asking prices, eBay Browse API; keys in the
-git-ignored `.env`, see `.env.example`). Asking prices are not sale prices and are
-**not** used in the experiments.
-
-### 3. Splits
+## 2. Create the fixed splits
 
 ```bash
 python pokeprice/make_splits.py --test-months 12 --val-months 12
 ```
 
-Writes `data/splits.csv` with two columns:
+`data/splits.csv` contains:
 
-* `split_temporal` (main experiment): whole sets by release date. Test = sets
-  released in the last 12 months of priced data, val = the 12 months before, train =
-  everything earlier. No set spans two splits (asserted).
-* `split_random`: random cards, same split sizes (for comparison only).
+- `split_temporal`: main experiment; entire later-released sets are held out.
+- `split_random`: diagnostic comparison with the same split sizes.
+- `identity_seen_in_temporal_train` and `identity_seen_in_random_train`: used
+  for predeclared seen-versus-unseen identity analysis.
 
-eBay cards are labelled `ebay` in both and never used for training or tuning.
+The script asserts that no set crosses temporal partitions and that release
+dates are ordered. This is a later-set generalisation test, not prospective
+future-price forecasting: all labels come from the same price snapshot.
 
-### 4. Baselines (metadata only)
+## 3. Run identity-controlled metadata baselines
 
 ```bash
 python pokeprice/baselines.py --split split_temporal
 python pokeprice/baselines.py --split split_random
 ```
 
-Models: rarity-median, HistGradientBoosting, MLP; 3 seeds each (rarity-median is
-deterministic). Outputs in `results/`: `baseline_summary_*.csv` (mean/std),
-`baseline_runs_*.csv` (per seed) and `baseline_preds_*.csv` (per-card predictions
-for failure analysis). Metrics: MAE on log price, Spearman, median absolute % error,
-share of predictions within 2×.
+The primary cohort is Pokémon cards with a National Pokédex identity. Use
+`--cohort all` only as a sensitivity analysis. The baseline feature sets are:
 
-## Rules we follow
+- `identity`: Pokémon identity only.
+- `metadata`: structured metadata without identity.
+- `identity_metadata`: identity plus structured metadata; this is the baseline
+  that image and fusion models must beat for research question 1.
 
-* Encoders, scalers and medians are fitted on train rows only.
-* Hyperparameters were fixed in advance, not tuned on the test split or eBay set.
-* Test and eBay hold-out sets are scored, never used to choose settings.
+Models are rarity median, identity median, HistGradientBoosting and an MLP.
+Tree categorical features use cross-fitted target encoding; neural categorical
+features use training-fitted one-hot encoding. Unknown validation/test identities
+fall back without using validation/test targets.
+
+Outputs include `set_id`, `pokemon_identity` and `identity_seen_in_train` for
+paired and stratified analysis. The new files have a cohort suffix, for example
+`results/baseline_preds_split_temporal_pokemon.csv`. Previously committed result
+files were produced by the old, non-identity-controlled pipeline and must not be
+reported as results for the revised questions.
+
+## 4. Prepare controlled image views
+
+A full card scan contains artwork, borders, text, rarity symbols and layout.
+Consequently, a full-card model alone cannot establish that artwork helped.
+
+First assign ordinary framed cards to generation-aware layout families:
+
+```bash
+python pokeprice/make_artwork_layouts.py
+```
+
+This writes the eligible assignments, explicit exclusions and a seeded audit
+sample. Edit `data/artwork_layout_templates.csv`: inspect the listed example
+card for each family, enter its normalised artwork box, and change `reviewed` to
+`true`. The already reviewed XY template came from `xy5-1`. Full-art, special
+mechanic, promotional and unsupported layouts are excluded rather than assigned
+an unreliable crop.
+
+No per-card override file is needed for the current reviewed templates. If an
+audited exception is found later, pass an override CSV to
+`prepare_image_views.py` with `--overrides PATH`.
+
+Pilot the seeded audit cards before generating the complete cohort:
+
+```bash
+python pokeprice/prepare_image_views.py --card-list data/artwork_layout_audit.csv
+python pokeprice/prepare_image_views.py --require-all-templates
+```
+
+The second command should be run only after every assigned family template has
+been reviewed. It produces a manifest and three matched conditions:
+
+```text
+full_card
+artwork_only
+layout_only
+```
+
+The reusable family boxes make the experiment scalable while retaining manual
+quality control through `data/artwork_layout_audit.csv`. The manifest records
+the family, template example, optional override, coordinates, split and image
+hashes. The full-card condition references the existing official image instead
+of copying it; only artwork-only and masked-layout images are materialised.
+Models must use the manifest rather than scanning output directories.
+
+The relevant files are:
+
+```text
+data/artwork_layout_templates.csv
+data/artwork_layout_assignments.csv
+data/artwork_layout_exclusions.csv
+data/artwork_layout_audit.csv
+```
+
+To regenerate after changing a template:
+
+```bash
+python pokeprice/prepare_image_views.py
+```
+
+## 5. Shared evaluation contract
+
+Every metadata, image and fusion model should write:
+
+```text
+card_id,set_id,model,seed,eval,y_true_log,y_pred_log
+```
+
+Recommended additional fields are `pokemon_identity`,
+`identity_seen_in_train`, `image_condition` and `feature_set`.
+
+Evaluate one or more prediction files with:
+
+```bash
+python pokeprice/evaluate_predictions.py results/predictions.csv --reference hgb_identity_metadata --out results/main_evaluation
+```
+
+The evaluator produces overall, per-set and seen/unseen-identity metrics. With a
+reference model, it also produces paired MAE differences and confidence intervals
+by bootstrapping whole sets. The shared metrics are log-price MAE, Spearman rank
+correlation, median absolute percentage error and the share within 2×.
+
+## 6. Optional live eBay asking-price snapshots
+
+The eBay Browse API does not provide realised sale prices. Active listings must
+not be mixed with TCGplayer labels or described as sold prices. To capture a
+timestamped exploratory snapshot for preselected card IDs:
+
+```bash
+python pokeprice/select_ebay_cards.py
+python pokeprice/collect_ebay_live.py
+```
+
+Credentials belong in the git-ignored `.env`; see `.env.example`. Each output
+records retrieval time, listing ID, query, price, shipping, sale format,
+condition, match/rejection decision and whether a cached response was used.
+
+The older `build_ebay.py` and `parse_ebay_paste.py` scripts are retained only as
+legacy work. They are not part of the revised reproducible experiment unless the
+group later obtains an authorised, auditable sold-price source.
+
+## Experimental rules
+
+- Test rows are never used for tuning, feature selection, early stopping or
+  choosing image transformations.
+- Fit encoders, scalers, target encoders and identity medians on training data.
+- Use validation data for model and hyperparameter selection.
+- Run seeds 0, 1 and 2 for stochastic models.
+- Compare models on identical cards and report per-set results.
+- Report exclusions, missing identities, missing images and negative results.
+- Do not claim that identity measures time-varying hype; it controls stable
+  between-character differences.
 
 ## Layout
 
-```
-pokeprice/            scripts (fetch_cards, build_ebay, make_splits, baselines, dashboard_server)
-data/                 cards.csv, sets.csv, splits.csv, (ebay_*.csv)  [data/raw, images ignored by git]
-results/              baseline metrics and predictions
-report/               draft report sections
-CHANGELOG_AI.md       what the AI assistant wrote/changed (for the AI Use Statement)
+```text
+pokeprice/   collection, splitting, baselines, image views and evaluation
+data/        source tables, fixed splits and optional ignored image/cache data
+results/     prediction-level and aggregate results
+report/      report drafts and member handoff notes
 ```

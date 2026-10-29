@@ -1,0 +1,13 @@
+layout_family,x0,y0,x1,y1,box_source,reviewed,example_card_id,notes
+wotc_base_gym_standard,0.1083,0.105,0.8917,0.5327,manual,true,base1-69,Annotate Base Set Weedle; also audit Gym cards
+wotc_neo_standard,0.1117,0.115,0.8883,0.5327,manual,true,neo2-18,Annotate Neo Discovery Beedrill
+ecard_standard,0.095,0.1055,0.965,0.480,manual,true,ecard2-57,Annotate Aquapolis Scyther
+ex_era_standard,0.06,0.0897,0.94,0.4773,manual,true,ex12-50,Annotate Legend Maker Chinchou
+dp_platinum_standard,0.06,0.0897,0.94,0.4973,manual,true,dp3-56,Annotate Secret Wonders Muk
+hgss_standard,0.075,0.0957,0.9387,0.5239,manual,true,hgss3-42,Annotate HS Undaunted Aron
+bw_standard,0.0708,0.1016,0.9292,0.4961,manual,true,bw9-21,Annotate Plasma Freeze Wooper
+xy_standard,0.0777,0.1016,0.9223,0.5,manual,true,xy5-1,Reviewed on Primal Clash Weedle
+sm_standard,0.0736,0.0957,0.9264,0.4775,manual,true,sm8-109,Annotate Lost Thunder Onix
+swsh_standard,0.0736,0.0957,0.9264,0.4775,manual,true,swsh7-39,Annotate Evolving Skies Luvdisc
+sv_standard,0.0736,0.0957,0.9264,0.4775,manual,true,sv8pt5-38,Annotate Prismatic Evolutions Spritzee
+mega_standard,0.0736,0.0957,0.9264,0.4775,manual,true,me1-42,Annotate Mega Evolution Snom

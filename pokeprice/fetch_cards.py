@@ -27,6 +27,11 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+try:  # support direct script execution and package imports
+    from .path_utils import card_image_filename
+except ImportError:
+    from path_utils import card_image_filename
+
 API = "https://api.pokemontcg.io/v2"
 PAGE_SIZE = 250  # API maximum
 # TCGplayer price keys that correspond to a card's *standard* printing.
@@ -102,15 +107,36 @@ def pick_price(card):
     return None, None, None, None, None
 
 
+def pokemon_identity(card):
+    """Return a stable species identity from National Pokedex numbers.
+
+    Printed names are not a safe identity: for example, ``Charizard``,
+    ``Charizard ex`` and ``Charizard VMAX`` would be treated as unrelated.  The
+    API's National Pokedex numbers group those mechanics under the same species.
+    Multi-Pokemon cards retain a sorted, pipe-separated tuple.  Trainer and
+    Energy cards intentionally have no Pokemon identity.
+    """
+    if not str(card.get("supertype", "")).lower().startswith("pok"):
+        return None, None
+    numbers = sorted({int(n) for n in (card.get("nationalPokedexNumbers") or [])})
+    if not numbers:
+        return None, None
+    raw = "|".join(map(str, numbers))
+    return raw, raw
+
+
 def parse_cards(raw_dir):
     rows = []
     for f in sorted(raw_dir.glob("page_*.json")):
         for c in json.loads(f.read_text())["data"]:
             variant, market, low, mid, high = pick_price(c)
+            pokedex_numbers, identity = pokemon_identity(c)
             rows.append(dict(
                 card_id=c["id"], name=c["name"], supertype=c.get("supertype"),
                 subtypes="|".join(c.get("subtypes") or []),
                 hp=c.get("hp"), types="|".join(c.get("types") or []),
+                national_pokedex_numbers=pokedex_numbers,
+                pokemon_identity=identity,
                 evolves_from=c.get("evolvesFrom"),
                 rarity=c.get("rarity"), artist=c.get("artist"),
                 number=c.get("number"), set_id=c["set"]["id"],
@@ -126,6 +152,7 @@ def parse_cards(raw_dir):
                 price_updated=(c.get("tcgplayer") or {}).get("updatedAt"),
                 image_url=(c.get("images") or {}).get("small"),
                 image_url_large=(c.get("images") or {}).get("large"),
+                image_file=card_image_filename(c["id"]),
             ))
     df = pd.DataFrame(rows).drop_duplicates("card_id")
     df["release_date"] = pd.to_datetime(df["release_date"], format="%Y/%m/%d")
@@ -138,7 +165,7 @@ def download_images(session, df, img_dir, size="small"):
     todo = df[df["price_market"].notna()]
     ok = fail = 0
     for i, (cid, url) in enumerate(zip(todo["card_id"], todo[col])):
-        dest = img_dir / f"{cid}.png"
+        dest = img_dir / card_image_filename(cid)
         if dest.exists() and dest.stat().st_size > 0:
             continue
         try:
