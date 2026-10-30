@@ -1,106 +1,149 @@
-# Project handoff: data, modelling and analysis
+# Handoff to Member 3: final analysis and reporting
 
-## Research questions
+## Project status
 
-1. After controlling for Pokémon identity, do visual features improve price
-   prediction beyond structured metadata?
-2. Does the visual contribution persist on sets released after every training
-   set?
-3. Are improvements produced by artwork, or by shortcuts such as card layout,
-   text and set-specific design?
-4. Can residual gated fusion with modality dropout generalise better than
-   ordinary concatenation?
+Data preparation, identity-controlled baselines, controlled image views,
+multimodal training, temporal final evaluation and random-split diagnostics are
+complete. The temporal test set has been opened and must not be used for any
+further model selection, tuning or architectural changes.
 
-The supervised target is `log1p(price_market)`, where `price_market` is the
-TCGplayer market price for one standard printing of a card on 29 October 2026.
-This is cross-sectional price prediction, not historical price forecasting.
+The report-ready Member 1 and Member 2 drafts are:
 
-## Dataset and cohorts
+- `report/member1_sections_draft.md`
+- `report/member2_sections_draft.md`
 
-The Pokémon TCG API snapshot contains 20,670 cards, of which 19,486 have a
-usable standard-printing market price. The primary structured-data cohort has
-16,423 priced Pokémon cards with a National Pokédex identity across 160 sets.
-Ninety-eight priced Pokémon cards without an API identity are excluded.
+Member 3 now owns the consolidated results, figures, error analysis,
+limitations and final discussion.
 
-The controlled visual cohort contains 11,509 standard framed cards across 12
-reviewed layout families. Special rarities, irregular mechanics, promotional or
-unsupported layouts, non-Pokémon cards, cards without usable prices or identity,
-and cards without a local image are recorded in the exclusions file rather than
-force-fitted to an unreliable artwork crop.
+## Research questions and final answers
 
-The temporal visual cohort contains 10,253 training cards, 604 validation cards
-and 652 test cards. Every visual model and its corresponding metadata baseline
-must use this same cohort for a paired comparison.
+### 1. Do images improve prediction beyond identity and metadata?
 
-## Data contract
+Only under a restricted condition. On the later-set temporal test, full-card
+residual gated fusion achieved mean log-price MAE 0.0770 ± 0.0099 compared with
+0.0852 ± 0.0143 for metadata. After averaging seed predictions per card, its
+paired MAE difference from metadata was -0.0086 with a whole-set bootstrap 95%
+interval of [-0.0183, -0.0026].
 
-- `data/cards.csv`: card metadata, target price, National Pokédex identity and
-  the safe local `image_file` name; join key `card_id`.
-- `data/splits.csv`: fixed temporal and random partitions plus seen/unseen
-  identity flags.
-- `data/images/<image_file>`: official full-card scans.
-- `data/artwork_layout_templates.csv`: reviewed normalised artwork box for each
-  layout family.
-- `data/artwork_layout_assignments.csv`: eligible visual-cohort cards and their
-  assigned families.
-- `data/artwork_layout_exclusions.csv`: excluded cards and explicit reasons.
-- `data/artwork_layout_audit.csv`: seeded manual-audit sample of 12 cards per
-  family.
-- `data/image_views/manifest.csv`: 34,527 matched rows covering `full_card`,
-  `artwork_only` and `layout_only`, including split, family, crop coordinates,
-  image paths and hashes.
+Artwork-only fusion did not significantly improve on metadata. Image-only
+models were worse than metadata for every image condition.
 
-The family template is used unless a future audited exception file is supplied
-to `prepare_image_views.py` through `--overrides`. No per-card override file is
-currently required.
+### 2. Does visual value persist on later unseen sets?
 
-## Member 2: model contract
+The full-card gated improvement occurs on seven complete test sets released
+after every training set, so it supports later-set transfer for full-card cues.
+The result is not evidence that artwork itself transfers. Temporal validation
+and test differed, and only seven temporal test cards have identities unseen in
+training, so both set-level and unseen-identity claims must remain cautious.
 
-Compare the following models on identical cards:
+### 3. Artwork or shortcuts?
 
-1. Identity-plus-metadata baseline.
-2. Frozen pretrained image encoder with a regression head.
-3. Ordinary image-plus-metadata concatenation.
-4. Residual gated fusion without modality dropout.
-5. Residual gated fusion with modality dropout.
+Evidence favours layout, text or generation-specific design shortcuts.
+Full-card concatenation beat artwork-only concatenation by -0.0040 paired MAE
+with a 95% interval of [-0.0054, -0.0025]. Full-card and layout-only image
+models also substantially outperformed artwork-only image models, while
+artwork-only fusion failed to beat metadata. Layout-only fusion was competitive
+but not significantly better than metadata.
 
-Run the image and fusion comparisons separately for `full_card`,
-`artwork_only` and `layout_only`. Keep the encoder, metadata representation,
-training budget and seeds matched when comparing fusion mechanisms. Tune only
-on validation data. If a residual method uses a pretrained metadata prediction,
-its training predictions must be generated out of fold.
+### 4. Does residual gated fusion with modality dropout beat concatenation?
 
-Each model writes prediction rows with:
+Not in the primary temporal setting. Full-card residual gating produced the
+clearest gain against metadata, but its direct advantage over ordinary
+concatenation was not conclusive. Adding modality dropout made the full-card
+gated model worse by +0.0046 MAE, 95% interval [0.0003, 0.0104].
+
+On the random split, modality dropout significantly improved on concatenation
+for all three image conditions, but it did not significantly beat metadata.
+Thus modality dropout helps within-set interpolation but does not demonstrate
+better chronological domain generalisation.
+
+## Important split interpretation
+
+The temporal visual cohort has 10,253 training, 604 validation and 652 test
+cards. Sets are disjoint and chronologically ordered.
+
+The random visual cohort has 10,034 training, 719 validation and 756 test cards.
+All 121 random validation sets and all 120 random test sets also occur in random
+training; only two random-test cards have unseen identities. Its Spearman
+correlations near 0.93 therefore reflect interpolation across familiar sets and
+must not replace the temporal result. Absolute MAE should not be compared
+directly across splits because their target-price distributions differ.
+
+## Canonical result files
+
+Keep these raw prediction files because they reproduce every final evaluation:
 
 ```text
-card_id,set_id,model,seed,eval,y_true_log,y_pred_log
+results/multimodal_temporal_artwork_only.csv
+results/multimodal_temporal_full_card.csv
+results/multimodal_temporal_layout_only.csv
+results/multimodal_random_artwork_only.csv
+results/multimodal_random_full_card.csv
+results/multimodal_random_layout_only.csv
 ```
 
-Include `pokemon_identity`, `identity_seen_in_train`, `feature_set` and
-`image_condition` where applicable. Use seeds 0, 1 and 2.
+Use these temporal evaluation files:
 
-## Member 3: analysis contract
+```text
+results/multimodal_temporal_final_summary.csv
+results/multimodal_temporal_final_runs.csv
+results/multimodal_temporal_final_paired.csv
+results/multimodal_temporal_final_per_set.csv
+results/multimodal_temporal_final_by_identity.csv
+```
 
-- Treat the temporal split as the main experiment and the random split as a
-  diagnostic.
-- Report seen-identity and unseen-identity results.
-- Compare full-card, artwork-only and layout-only predictions on identical card
-  IDs.
-- Run image and metadata modality ablations.
-- Report per-set metrics and paired confidence intervals from a whole-set
-  bootstrap.
-- Audit duplicate or reprinted art using manifest hashes.
-- Analyse errors by identity, rarity, set and price range.
+Use these random diagnostic files:
 
-Use `pokeprice/evaluate_predictions.py` so all models use the same metrics and
-pairing rules.
+```text
+results/multimodal_random_final_summary.csv
+results/multimodal_random_final_runs.csv
+results/multimodal_random_final_paired.csv
+results/multimodal_random_final_per_set.csv
+results/multimodal_random_final_by_identity.csv
+```
 
-## Leakage controls
+The retained top-level baseline prediction and evaluation files are Member 1's
+canonical structured-data results. Redundant direct baseline summaries and
+superseded validation-only multimodal evaluations are stored under
+`results/archive/`; they must not be presented as final results.
 
-1. Test data cannot be used for tuning, early stopping, crop selection or image
-   transformations.
-2. Fit encoders, scalers, target encoders and group statistics using training
-   rows only.
-3. Use the supplied splits; do not create model-specific partitions.
-4. Compare models on identical card IDs.
-5. Keep active eBay asking prices outside supervised training and evaluation.
+## Evaluation conventions
+
+- Summary tables report mean ± standard deviation across seeds 0, 1 and 2.
+- Paired files first average seed predictions per card, then bootstrap complete
+  sets. A negative `mae_delta` means the candidate is better than the named
+  reference.
+- The primary metric is MAE on `log1p(price_market)`.
+- Spearman, median absolute percentage error in dollars and share within a
+  factor of two are secondary metrics.
+- Compare models only on identical card IDs.
+
+## Member 3 remaining work
+
+1. Produce a compact temporal table with metadata, image-only, concatenation,
+   gated and gated-plus-dropout results for all three image conditions.
+2. Plot paired temporal MAE differences and 95% whole-set bootstrap intervals.
+3. Produce a smaller temporal-versus-random diagnostic figure; explain set
+   overlap rather than comparing raw MAE as though cohorts were identical.
+4. Analyse temporal errors by set, identity, rarity and target-price range.
+5. Select representative over- and under-predicted cards without using them to
+   alter the model.
+6. Audit repeated artwork using `difference_hash` in
+   `data/image_views/manifest.csv` and discuss any sensitivity.
+7. Report the small unseen-identity sample as a limitation rather than a strong
+   subgroup conclusion.
+8. Integrate the Member 1 and Member 2 drafts, remove duplication, and keep the
+   main report within the page limit.
+
+## Reproduction commands
+
+No model retraining is required for report production. Recreate the canonical
+evaluation tables from the saved predictions with:
+
+```powershell
+.\.venv\Scripts\python.exe pokeprice/evaluate_predictions.py results/multimodal_temporal_artwork_only.csv results/multimodal_temporal_full_card.csv results/multimodal_temporal_layout_only.csv --reference torch_metadata_identity_metadata --out results/multimodal_temporal_final
+```
+
+```powershell
+.\.venv\Scripts\python.exe pokeprice/evaluate_predictions.py results/multimodal_random_artwork_only.csv results/multimodal_random_full_card.csv results/multimodal_random_layout_only.csv --reference torch_metadata_identity_metadata --out results/multimodal_random_final
+```

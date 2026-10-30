@@ -1,0 +1,5 @@
+eval,model,reference,n_cards,n_sets,mae_delta,ci95_low,ci95_high
+val,resnet50_image_artwork_only,resnet50_concat_artwork_only,604,6,0.2180632942991805,0.12191766566929832,0.38606961196572714
+val,resnet50_residual_gated_artwork_only,resnet50_concat_artwork_only,604,6,0.0009675265265673776,-0.0030799862773940295,0.005016345414038516
+val,resnet50_residual_gated_modality_dropout_artwork_only,resnet50_concat_artwork_only,604,6,-0.001096580245960382,-0.006183765840677663,0.0034374153117491873
+val,torch_metadata_identity_metadata,resnet50_concat_artwork_only,604,6,-0.0059843470015689924,-0.01152123944140499,-0.0016303200621872128

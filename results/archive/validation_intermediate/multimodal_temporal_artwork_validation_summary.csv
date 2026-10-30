@@ -1,0 +1,8 @@
+,,mae_log,mae_log,spearman,spearman,medape,medape,within_2x,within_2x
+,,mean,std,mean,std,mean,std,mean,std
+eval,model,,,,,,,,
+val,resnet50_concat_artwork_only,0.0598,0.0157,0.3711,0.0554,0.3252,0.0382,0.8013,0.0541
+val,resnet50_image_artwork_only,0.2847,0.0155,0.1369,0.0135,1.2126,0.1892,0.3565,0.0265
+val,resnet50_residual_gated_artwork_only,0.0624,0.0091,0.3188,0.0137,0.3442,0.0465,0.7859,0.0324
+val,resnet50_residual_gated_modality_dropout_artwork_only,0.0613,0.0119,0.3054,0.036,0.3629,0.0526,0.7853,0.0439
+val,torch_metadata_identity_metadata,0.0532,0.003,0.335,0.0589,0.3126,0.0126,0.8157,0.0193

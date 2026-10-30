@@ -1,0 +1,5 @@
+eval,model,reference,n_cards,n_sets,mae_delta,ci95_low,ci95_high
+val,resnet50_concat_artwork_only,torch_metadata_identity_metadata,604,6,0.0059843470015689924,0.0017069615239966235,0.011518819143565484
+val,resnet50_image_artwork_only,torch_metadata_identity_metadata,604,6,0.22404764130074953,0.12446595770483461,0.40110532722595044
+val,resnet50_residual_gated_artwork_only,torch_metadata_identity_metadata,604,6,0.00695187352813637,0.0033565262389937613,0.012138956702226589
+val,resnet50_residual_gated_modality_dropout_artwork_only,torch_metadata_identity_metadata,604,6,0.00488776675560861,0.003094478956977047,0.008699158941408549

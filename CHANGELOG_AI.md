@@ -43,7 +43,9 @@ Codex adapted the repository to this experimental design by:
 - generating matched `full_card`, `artwork_only` and `layout_only` conditions
   from manually reviewed family templates; and
 - documenting the model-output contract and leakage controls for the image and
-  fusion experiments.
+  fusion experiments; and
+- implementing frozen ResNet embedding extraction plus cohort-matched PyTorch
+  metadata, image, concatenation and residual-gated fusion models.
 
 The team manually reviewed the layout templates and executed the full image-view
 pipeline. It produced 11,509 matched cards across 12 layout families, or 34,527

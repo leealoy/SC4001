@@ -2,6 +2,9 @@
 data/raw/
 data/images/
 data/image_views/
+data/features/
+results/checkpoints/
+.venv/
 __pycache__/
 .env
 *.pyc

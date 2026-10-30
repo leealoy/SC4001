@@ -23,8 +23,16 @@ hypothesis and should be evaluated under the same splits and tuning budget.
 Python 3.11:
 
 ```bash
-pip install -r requirements.txt
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
+
+Using the project virtual environment avoids conflicts with system-wide machine
+learning packages. Run later commands with `.\.venv\Scripts\python.exe` in
+place of `python` if the environment has not been activated. The NumPy and
+PyTorch versions are intentionally bounded because PyTorch 2.3 Windows wheels
+are not compatible with NumPy 2.x.
 
 ## 1. Download the card data
 
@@ -85,10 +93,8 @@ features use training-fitted one-hot encoding. Unknown validation/test identitie
 fall back without using validation/test targets.
 
 Outputs include `set_id`, `pokemon_identity` and `identity_seen_in_train` for
-paired and stratified analysis. The new files have a cohort suffix, for example
-`results/baseline_preds_split_temporal_pokemon.csv`. Previously committed result
-files were produced by the old, non-identity-controlled pipeline and must not be
-reported as results for the revised questions.
+paired and stratified analysis. Canonical files have a cohort suffix, for
+example `results/baseline_preds_split_temporal_pokemon.csv`.
 
 ## 4. Prepare controlled image views
 
@@ -150,7 +156,53 @@ To regenerate after changing a template:
 python pokeprice/prepare_image_views.py
 ```
 
-## 5. Shared evaluation contract
+## 5. Extract frozen image embeddings
+
+Install the PyTorch dependencies in `requirements.txt`, then extract one frozen
+ImageNet ResNet-50 embedding for each matched image condition:
+
+```bash
+python pokeprice/extract_image_embeddings.py --encoder resnet50
+```
+
+The first run may download the official torchvision weights. The extractor
+pads portrait cards to a square before resizing, keeps the full card visible,
+and writes float16 feature files under `data/features/resnet50/`. Existing
+feature files are not replaced unless `--overwrite` is supplied.
+
+## 6. Train Member 2 models
+
+During model selection, run validation only (the default). Start with the
+artwork condition and all five model families:
+
+```bash
+python pokeprice/train_multimodal.py --condition artwork_only
+```
+
+This trains the cohort-matched identity-plus-metadata model, image-only model,
+ordinary concatenation, residual gated fusion, and residual gated fusion with
+modality dropout for seeds 0, 1 and 2. Checkpoints selected by validation MAE
+are written after every improvement.
+
+Run the shortcut conditions without duplicating the metadata prediction rows:
+
+```bash
+python pokeprice/train_multimodal.py --condition full_card --models image concat gated gated_dropout
+python pokeprice/train_multimodal.py --condition layout_only --models image concat gated gated_dropout
+```
+
+Tune architecture and optimisation settings using validation outputs only. Once
+the settings and hypotheses are frozen, score the untouched test rows from the
+validation-selected checkpoints with
+`--load-checkpoints --include-test --overwrite`. The random split is a secondary
+diagnostic and is selected with `--split split_random`.
+
+The residual models learn the metadata base prediction and gated image
+correction jointly. They do not consume in-sample predictions from a separately
+pretrained metadata model. With modality dropout, dropped-image examples reduce
+exactly to the metadata branch.
+
+## 7. Shared evaluation contract
 
 Every metadata, image and fusion model should write:
 
@@ -172,7 +224,14 @@ reference model, it also produces paired MAE differences and confidence interval
 by bootstrapping whole sets. The shared metrics are log-price MAE, Spearman rank
 correlation, median absolute percentage error and the share within 2×.
 
-## 6. Optional live eBay asking-price snapshots
+For the three final temporal prediction files, use the cohort-matched metadata
+model as the paired reference:
+
+```bash
+python pokeprice/evaluate_predictions.py results/multimodal_temporal_artwork_only.csv results/multimodal_temporal_full_card.csv results/multimodal_temporal_layout_only.csv --reference torch_metadata_identity_metadata --out results/multimodal_temporal_evaluation
+```
+
+## 8. Optional live eBay asking-price snapshots
 
 The eBay Browse API does not provide realised sale prices. Active listings must
 not be mixed with TCGplayer labels or described as sold prices. To capture a
